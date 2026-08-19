@@ -1,3 +1,11 @@
+<p align="center">
+  <img
+    src="https://raw.githubusercontent.com/binaydhakal/agentbarrier/main/docs/assets/agentbarrier-icon.png"
+    alt="AgentBarrier icon"
+    width="160"
+  >
+</p>
+
 # AgentBarrier
 
 AgentBarrier is a deterministic test harness for the control guarantees around AI-agent tool
