@@ -8,6 +8,17 @@
 
 # AgentBarrier
 
+<p align="center">
+  <strong>Prove your AI agent cannot act after rejection, cancellation, timeout, or replay.</strong>
+</p>
+
+<p align="center">
+  <a href="https://pypi.org/project/agentbarrier/"><img src="https://img.shields.io/pypi/v/agentbarrier.svg" alt="PyPI version"></a>
+  <a href="https://pypi.org/project/agentbarrier/"><img src="https://img.shields.io/pypi/pyversions/agentbarrier.svg" alt="Python versions"></a>
+  <a href="https://github.com/binaydhakal/agentbarrier/actions/workflows/ci.yml"><img src="https://github.com/binaydhakal/agentbarrier/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+  <a href="https://github.com/binaydhakal/agentbarrier/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/agentbarrier.svg" alt="License"></a>
+</p>
+
 AgentBarrier is a deterministic test harness for the control guarantees around AI-agent tool
 execution. It verifies that approval, rejection, cancellation, timeout, replay, delegation,
 ambiguous outcomes, audit receipts, and parallel execution controls prevent unintended side
@@ -19,6 +30,18 @@ framework or application honored the expected lifecycle boundary.
 
 > **Status:** early development. The public adapter contract is usable, but compatibility should
 > be pinned until the first stable release.
+
+<p align="center">
+  <img
+    src="https://raw.githubusercontent.com/binaydhakal/agentbarrier/main/docs/assets/agentbarrier-demo.gif"
+    alt="AgentBarrier detects an effect committed before approval, then passes the safe reference adapter"
+    width="100%"
+  >
+</p>
+
+<p align="center">
+  <sub>The failure is produced by a real sentinel commit. <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/demo/failure.tape">View the reproducible recording source.</a></sub>
+</p>
 
 ## Why
 

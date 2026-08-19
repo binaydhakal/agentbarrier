@@ -6,6 +6,17 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+### Added
+
+- Reproducible terminal recording that demonstrates an unsafe pre-approval effect and the safe
+  reference result for the same guarantee.
+- Optional ANSI color for terminal reports through `--color auto|always|never`.
+
+### Changed
+
+- Console failures now include the finding title, expected behavior, observed evidence, and
+  remediation guidance.
+
 ## [0.1.0] - 2026-08-19
 
 ### Added

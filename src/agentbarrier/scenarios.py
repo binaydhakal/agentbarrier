@@ -675,4 +675,5 @@ def select_scenarios(ids: Sequence[str] | None) -> tuple[Scenario, ...]:
 
 
 def _describe_commits(events: Sequence[EffectEvent]) -> str:
-    return f"{len(events)} commit(s) for {[event.action_id for event in events]!r}"
+    action_labels = [event.action_id.rsplit(":", 1)[-1] for event in events]
+    return f"{len(events)} commit(s) for action(s) {action_labels!r}"

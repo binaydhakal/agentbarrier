@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import inspect
+import os
 import sys
 from collections.abc import Callable, Sequence
 from typing import Any, cast
@@ -54,6 +55,12 @@ def _add_run_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--json", metavar="PATH", help="write JSON evidence")
     parser.add_argument("--junit", metavar="PATH", help="write JUnit XML")
     parser.add_argument("--sarif", metavar="PATH", help="write SARIF 2.1.0")
+    parser.add_argument(
+        "--color",
+        choices=("auto", "always", "never"),
+        default="auto",
+        help="colorize terminal output (default: auto)",
+    )
     parser.set_defaults(handler=_run_suite)
 
 
@@ -78,7 +85,7 @@ def _run_suite(arguments: argparse.Namespace) -> int:
         fail_fast=arguments.fail_fast,
     )
     suite = SuiteRunner(options).verify_sync(adapter)
-    print(render_console(suite))
+    print(render_console(suite, color=_use_color(arguments.color)))
     if arguments.json:
         write_json(suite, arguments.json)
     if arguments.junit:
@@ -86,6 +93,14 @@ def _run_suite(arguments: argparse.Namespace) -> int:
     if arguments.sarif:
         write_sarif(suite, arguments.sarif)
     return suite.exit_code
+
+
+def _use_color(mode: str) -> bool:
+    if mode == "always":
+        return True
+    if mode == "never":
+        return False
+    return "NO_COLOR" not in os.environ and os.environ.get("TERM") != "dumb" and sys.stdout.isatty()
 
 
 def _load_adapter(target: str) -> AgentAdapter:

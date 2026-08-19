@@ -57,6 +57,11 @@ def test_scenarios_cli_lists_guarantees(capsys: pytest.CaptureFixture[str]) -> N
     assert "audit_receipts" in output
 
 
+def test_cli_can_force_color(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["self-test", "--scenario", "approval_hold", "--color", "always"]) == 0
+    assert "\x1b[32;1mPASS" in capsys.readouterr().out
+
+
 @pytest.mark.parametrize(
     "target",
     [

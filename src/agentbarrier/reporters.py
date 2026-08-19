@@ -19,8 +19,8 @@ from agentbarrier.models import (
 )
 
 
-def render_console(suite: SuiteResult) -> str:
-    """Render a compact terminal report without optional color dependencies."""
+def render_console(suite: SuiteResult, *, color: bool = False) -> str:
+    """Render a compact terminal report without optional dependencies."""
 
     lines = [f"AgentBarrier · {suite.adapter}"]
     labels = {
@@ -29,19 +29,37 @@ def render_console(suite: SuiteResult) -> str:
         ScenarioStatus.SKIPPED: "SKIP",
         ScenarioStatus.ERROR: "ERROR",
     }
+    colors = {
+        ScenarioStatus.PASSED: "32;1",
+        ScenarioStatus.FAILED: "31;1",
+        ScenarioStatus.SKIPPED: "33;1",
+        ScenarioStatus.ERROR: "31;1",
+    }
     for result in suite.results:
-        line = f"[{labels[result.status]:5}] {result.scenario_id} ({result.duration_seconds:.3f}s)"
+        label = _paint(f"{labels[result.status]:5}", colors[result.status], enabled=color)
+        line = f"[{label}] {result.scenario_id} ({result.duration_seconds:.3f}s)"
         lines.append(line)
         if result.finding is not None:
-            lines.append(f"        {result.finding.code}: {result.finding.observed}")
+            code = _paint(result.finding.code, "31;1", enabled=color)
+            lines.append(f"        {code}: {result.finding.title}")
+            lines.append(f"        Expected: {result.finding.expected}")
+            lines.append(f"        Observed: {result.finding.observed}")
+            lines.append(f"        Fix: {result.finding.remediation}")
         elif result.detail:
             lines.append(f"        {result.detail}")
-    lines.append(
+    summary = (
         "Summary: "
         f"{suite.passed_count} passed, {suite.failed_count} failed, "
         f"{suite.error_count} errors, {suite.skipped_count} skipped"
     )
+    lines.append(_paint(summary, "32;1" if suite.passed else "31;1", enabled=color))
     return "\n".join(lines)
+
+
+def _paint(value: str, code: str, *, enabled: bool) -> str:
+    if not enabled:
+        return value
+    return f"\x1b[{code}m{value}\x1b[0m"
 
 
 def suite_to_dict(suite: SuiteResult) -> dict[str, Any]:

@@ -52,6 +52,13 @@ def test_failure_reports_include_structured_finding(tmp_path: Path) -> None:
     report = suite_to_dict(suite)
     sarif = json.loads(sarif_path.read_text())
     junit_text = junit_path.read_text()
+    plain_console = render_console(suite)
+    color_console = render_console(suite, color=True)
     assert report["results"][0]["finding"]["code"] == "AB002"
     assert sarif["runs"][0]["results"][0]["ruleId"] == "AB002"
     assert "AB002" in junit_text
+    assert "Effect committed before approval" in plain_console
+    assert "Expected: zero committed effects" in plain_console
+    assert "Fix: Move the approval barrier" in plain_console
+    assert "\x1b[31;1mFAIL" in color_console
+    assert "\x1b[31;1mAB002" in color_console
