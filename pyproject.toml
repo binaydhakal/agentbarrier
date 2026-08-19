@@ -41,6 +41,7 @@ openai = ["openai-agents>=0.22,<1"]
 langgraph = ["langgraph>=1.2,<2; python_version >= '3.11'"]
 pydantic-ai = ["pydantic-ai-slim>=2.32,<3"]
 google-adk = ["google-adk>=2.7,<3"]
+autogen = ["autogen-core>=0.7.5,<0.8"]
 test = [
   "build>=1.2.2",
   "mypy>=1.15",
@@ -54,6 +55,7 @@ all = [
   "langgraph>=1.2,<2; python_version >= '3.11'",
   "pydantic-ai-slim>=2.32,<3",
   "google-adk>=2.7,<3",
+  "autogen-core>=0.7.5,<0.8",
 ]
 
 [project.urls]

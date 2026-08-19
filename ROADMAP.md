@@ -7,10 +7,10 @@ to reproduce locally and enforce in CI without model credentials.
 
 - [x] Add a PydanticAI adapter and credential-free integration tests.
 - [x] Add a Google Agent Development Kit adapter and credential-free integration tests.
-- [ ] Add an AutoGen adapter and credential-free integration tests.
+- [x] Add an AutoGen adapter and credential-free integration tests.
 - [x] Publish a reproducible visual demonstration of a real pre-approval side effect.
 - [x] Make console failures explain the expected boundary, observed effect, and repair direction.
-- [ ] Expand the compatibility matrix with tested package and Python versions.
+- [x] Expand the compatibility matrix with tested package and Python versions.
 - [ ] Add copy-ready CI examples for application adapters.
 
 ## Next
