@@ -12,6 +12,7 @@ Last verified: 2026-08-19
 | OpenAI Agents Python | 0.22.0 | Pass | Pass | — | — | — | Pass | Pass | **AB010** | — | — |
 | LangGraph (Python 3.11+) | 1.2.11 | Pass | Pass | Pass | — | — | Pass | Pass | **AB010** | — | — |
 | PydanticAI | 2.32.0 | Pass | Pass | Pass | — | — | Pass | Pass | **AB010** | — | — |
+| Google ADK | 2.7.1 | Pass | Pass | — | — | — | Pass | Pass | **AB010** | — | — |
 
 An em dash means the adapter does not declare that capability; the result is an explicit skip, not
 a pass.
@@ -43,7 +44,12 @@ uv run agentbarrier verify \
 uv run agentbarrier verify \
   agentbarrier.adapters.pydantic_ai:PydanticAIAdapter \
   --json build/pydantic-ai.json
+
+uv run agentbarrier verify \
+  agentbarrier.adapters.google_adk:GoogleADKAdapter \
+  --json build/google-adk.json
 ```
 
 Each run uses a temporary SQLite effect journal and a deterministic local plan. No prompt, model,
-credential, network request, or production tool is involved.
+credential, network request, or production tool is involved. Google ADK 2.7.1 marks its
+tool-confirmation feature as experimental and emits an upstream warning when that probe runs.

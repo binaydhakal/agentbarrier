@@ -13,6 +13,8 @@ All notable changes to this project will be documented in this file. The format 
 - Optional ANSI color for terminal reports through `--color auto|always|never`.
 - Credential-free PydanticAI adapter covering approval, rejection, argument binding, cancellation,
   timeout, and strict parallel-barrier behavior.
+- Credential-free Google Agent Development Kit adapter covering approval, rejection, cancellation,
+  timeout, and strict parallel-barrier behavior.
 
 ### Changed
 

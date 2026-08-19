@@ -6,7 +6,7 @@ to reproduce locally and enforce in CI without model credentials.
 ## 0.2.0 — broader framework coverage
 
 - [x] Add a PydanticAI adapter and credential-free integration tests.
-- [ ] Add a Google Agent Development Kit adapter and credential-free integration tests.
+- [x] Add a Google Agent Development Kit adapter and credential-free integration tests.
 - [ ] Add an AutoGen adapter and credential-free integration tests.
 - [x] Publish a reproducible visual demonstration of a real pre-approval side effect.
 - [x] Make console failures explain the expected boundary, observed effect, and repair direction.
