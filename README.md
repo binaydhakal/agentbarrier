@@ -109,10 +109,13 @@ agentbarrier verify agentbarrier.adapters.openai_agents:OpenAIAgentsAdapter
 
 python -m pip install 'agentbarrier[langgraph]'
 agentbarrier verify agentbarrier.adapters.langgraph:LangGraphAdapter
+
+python -m pip install 'agentbarrier[pydantic-ai]'
+agentbarrier verify agentbarrier.adapters.pydantic_ai:PydanticAIAdapter
 ```
 
-The core and OpenAI adapter support Python 3.10–3.13. The LangGraph adapter requires Python 3.11+
-because its interrupt lifecycle relies on async runnable-context propagation.
+The core, OpenAI, and PydanticAI adapters support Python 3.10–3.13. The LangGraph adapter requires
+Python 3.11+ because its interrupt lifecycle relies on async runnable-context propagation.
 
 These probes measure the framework's lifecycle behavior in a minimal configuration. For production
 confidence, implement an application adapter that replaces your real consequential tools with the

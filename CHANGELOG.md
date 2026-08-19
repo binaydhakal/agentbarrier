@@ -11,6 +11,8 @@ All notable changes to this project will be documented in this file. The format 
 - Reproducible terminal recording that demonstrates an unsafe pre-approval effect and the safe
   reference result for the same guarantee.
 - Optional ANSI color for terminal reports through `--color auto|always|never`.
+- Credential-free PydanticAI adapter covering approval, rejection, argument binding, cancellation,
+  timeout, and strict parallel-barrier behavior.
 
 ### Changed
 

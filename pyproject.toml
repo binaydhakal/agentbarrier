@@ -39,6 +39,7 @@ dependencies = []
 [project.optional-dependencies]
 openai = ["openai-agents>=0.22,<1"]
 langgraph = ["langgraph>=1.2,<2; python_version >= '3.11'"]
+pydantic-ai = ["pydantic-ai-slim>=2.32,<3"]
 test = [
   "build>=1.2.2",
   "mypy>=1.15",
@@ -50,6 +51,7 @@ test = [
 all = [
   "openai-agents>=0.22,<1",
   "langgraph>=1.2,<2; python_version >= '3.11'",
+  "pydantic-ai-slim>=2.32,<3",
 ]
 
 [project.urls]
