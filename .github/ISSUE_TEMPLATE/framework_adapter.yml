@@ -1,0 +1,63 @@
+name: Framework adapter request
+description: Propose deterministic coverage for an AI-agent framework.
+title: "[Adapter]: "
+labels:
+  - adapter
+body:
+  - type: input
+    id: framework
+    attributes:
+      label: Framework and version
+      placeholder: FrameworkName 1.2.3
+    validations:
+      required: true
+  - type: input
+    id: docs
+    attributes:
+      label: Control lifecycle documentation
+      description: Link to the framework's approval, cancellation, timeout, or tool-execution docs.
+      placeholder: https://...
+    validations:
+      required: true
+  - type: checkboxes
+    id: capabilities
+    attributes:
+      label: Relevant capabilities
+      options:
+        - label: Approval hold
+        - label: Rejection
+        - label: Argument binding
+        - label: Replay or idempotency
+        - label: Cancellation
+        - label: Timeout
+        - label: Parallel barrier
+        - label: Delegation
+        - label: Audit receipts
+  - type: textarea
+    id: deterministic
+    attributes:
+      label: Credential-free test approach
+      description: Explain how the lifecycle can be exercised locally without a provider API call.
+      placeholder: Use a deterministic model or direct graph execution to ...
+    validations:
+      required: true
+  - type: textarea
+    id: value
+    attributes:
+      label: Why this matters
+      description: Describe the consequential tool use or failure mode this adapter would cover.
+    validations:
+      required: true
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I am willing to help implement or test this adapter.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and the roadmap for this framework.
+          required: true

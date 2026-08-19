@@ -3,6 +3,13 @@
 Contributions are welcome, especially application adapters, framework adapters, deterministic
 failure reproductions, and improvements to the guarantee definitions.
 
+Before starting a larger change, open a
+[framework adapter request](https://github.com/binaydhakal/agentbarrier/issues/new?template=framework_adapter.yml)
+or describe a safe
+[control-failure reproduction](https://github.com/binaydhakal/agentbarrier/issues/new?template=control_finding.yml).
+Usage questions belong in
+[GitHub Discussions](https://github.com/binaydhakal/agentbarrier/discussions/categories/q-a).
+
 ## Development setup
 
 ```bash
@@ -32,6 +39,9 @@ uv run twine check dist/*
 - Record tested versions and observed results in `docs/compatibility.md`.
 
 Read `docs/adapters.md` before implementing an adapter.
+
+The adapter does not need to implement every capability. Unsupported guarantees must be declared
+honestly and remain visible as skipped; do not simulate support only to make the matrix green.
 
 ## Pull requests
 

@@ -54,8 +54,10 @@ all = [
 
 [project.urls]
 Homepage = "https://github.com/binaydhakal/agentbarrier"
+Documentation = "https://github.com/binaydhakal/agentbarrier#readme"
 Repository = "https://github.com/binaydhakal/agentbarrier"
 Issues = "https://github.com/binaydhakal/agentbarrier/issues"
+Changelog = "https://github.com/binaydhakal/agentbarrier/blob/main/CHANGELOG.md"
 
 [project.scripts]
 agentbarrier = "agentbarrier.cli:main"

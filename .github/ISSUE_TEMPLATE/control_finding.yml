@@ -1,0 +1,66 @@
+name: Control-failure reproduction
+description: Share a deterministic approval, rejection, replay, timeout, or cancellation failure.
+title: "[Finding]: "
+labels:
+  - control-finding
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use only disposable or sentinel effects. For security-sensitive findings, stop here and
+        follow SECURITY.md instead of creating a public issue.
+  - type: dropdown
+    id: boundary
+    attributes:
+      label: Control boundary
+      options:
+        - Approval hold
+        - Rejection
+        - Argument binding
+        - Replay or idempotency
+        - Ambiguous outcome
+        - Cancellation
+        - Timeout
+        - Parallel barrier
+        - Delegation
+        - Audit receipt
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected guarantee
+      placeholder: No effect can commit after the action is rejected.
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed effect
+      description: Describe the externally observed sentinel effect and its timing.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Safe deterministic reproduction
+      description: Include code or a repository that uses no production tool or credential.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Framework, AgentBarrier, Python, and operating-system versions
+      placeholder: Framework 1.2, AgentBarrier 0.1.0, Python 3.12, Linux
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety checks
+      options:
+        - label: This report does not expose a production target, credential, or private trace.
+          required: true
+        - label: The effect is a sentinel or disposable local resource.
+          required: true

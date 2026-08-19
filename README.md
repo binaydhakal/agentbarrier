@@ -32,6 +32,24 @@ framework or application honored the expected lifecycle boundary.
 > be pinned until the first stable release.
 
 <p align="center">
+  <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/adapters.md">Adapter guide</a>
+  ·
+  <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/compatibility.md">Compatibility</a>
+  ·
+  <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/threat-model.md">Threat model</a>
+  ·
+  <a href="https://github.com/binaydhakal/agentbarrier/blob/main/ROADMAP.md">Roadmap</a>
+  ·
+  <a href="https://github.com/binaydhakal/agentbarrier/blob/main/CONTRIBUTING.md">Contributing</a>
+</p>
+
+## See a real control failure
+
+The first run below uses an intentionally unsafe adapter that commits while approval is still
+pending. AgentBarrier catches the real sentinel effect as `AB002`. The second run exercises the
+safe reference adapter and passes the same guarantee.
+
+<p align="center">
   <img
     src="https://raw.githubusercontent.com/binaydhakal/agentbarrier/main/docs/assets/agentbarrier-demo.gif"
     alt="AgentBarrier detects an effect committed before approval, then passes the safe reference adapter"
@@ -69,6 +87,9 @@ agentbarrier self-test
 The self-test runs every guarantee against AgentBarrier's safe reference adapter. Application and
 framework adapters implement the small `AgentAdapter` / `RunHandle` contract.
 
+Use AgentBarrier in CI when your agent can cross a consequential boundary such as sending a
+message, issuing a refund, changing a database, deploying code, or invoking another agent.
+
 ```python
 from agentbarrier import SuiteRunner
 from myapp.agentbarrier_adapter import MyApplicationAdapter
@@ -95,7 +116,8 @@ because its interrupt lifecycle relies on async runnable-context propagation.
 
 These probes measure the framework's lifecycle behavior in a minimal configuration. For production
 confidence, implement an application adapter that replaces your real consequential tools with the
-sentinel at dependency-injection time. See [the adapter guide](docs/adapters.md).
+sentinel at dependency-injection time. See
+[the adapter guide](https://github.com/binaydhakal/agentbarrier/blob/main/docs/adapters.md).
 
 The same runner is available as a pytest fixture:
 
@@ -147,8 +169,12 @@ a `RunHandle`. The handle exposes pending actions and lifecycle decisions. See
 `agentbarrier.adapters.reference.ReferenceAdapter` for the complete, safe implementation and
 `docs/adapters.md` for implementation rules.
 
-Current framework results are recorded in [the compatibility matrix](docs/compatibility.md).
-The security boundary and limitations are defined in [the threat model](docs/threat-model.md).
+Current framework results are recorded in
+[the compatibility matrix](https://github.com/binaydhakal/agentbarrier/blob/main/docs/compatibility.md).
+The security boundary and limitations are defined in
+[the threat model](https://github.com/binaydhakal/agentbarrier/blob/main/docs/threat-model.md).
+Planned adapters and release priorities are public in
+[the roadmap](https://github.com/binaydhakal/agentbarrier/blob/main/ROADMAP.md).
 
 ## Safety
 
@@ -174,6 +200,11 @@ uv run pytest --cov=agentbarrier --cov-report=term-missing
 uv build
 uv run twine check dist/*
 ```
+
+Good first contributions include framework adapters, application examples, and deterministic
+reproductions of control failures. Start with the
+[contribution guide](https://github.com/binaydhakal/agentbarrier/blob/main/CONTRIBUTING.md) or open a
+[framework adapter request](https://github.com/binaydhakal/agentbarrier/issues/new?template=framework_adapter.yml).
 
 ## License
 
