@@ -1,0 +1,97 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agentbarrier"
+version = "0.1.0"
+description = "Deterministic control-plane safety tests for AI agents"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [
+  { name = "Binaya Dhakal", email = "binaydhakal35@gmail.com" },
+]
+keywords = [
+  "ai",
+  "agents",
+  "testing",
+  "safety",
+  "approval",
+  "idempotency",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Framework :: Pytest",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Testing",
+  "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+openai = ["openai-agents>=0.22,<1"]
+langgraph = ["langgraph>=1.2,<2; python_version >= '3.11'"]
+test = [
+  "build>=1.2.2",
+  "mypy>=1.15",
+  "pytest>=8.3",
+  "pytest-cov>=6.0",
+  "ruff>=0.11",
+  "twine>=6.1",
+]
+all = [
+  "openai-agents>=0.22,<1",
+  "langgraph>=1.2,<2; python_version >= '3.11'",
+]
+
+[project.urls]
+Homepage = "https://github.com/binaydhakal/agentbarrier"
+Repository = "https://github.com/binaydhakal/agentbarrier"
+Issues = "https://github.com/binaydhakal/agentbarrier/issues"
+
+[project.scripts]
+agentbarrier = "agentbarrier.cli:main"
+
+[project.entry-points.pytest11]
+agentbarrier = "agentbarrier.pytest_plugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentbarrier"]
+
+[tool.pytest.ini_options]
+# Disable this project's installed plugin while testing itself so coverage starts before package
+# import. End-user projects still auto-load the `pytest11` entry point normally.
+addopts = "--strict-config --strict-markers -p no:agentbarrier"
+testpaths = ["tests"]
+markers = [
+  "integration: tests that exercise an optional agent framework",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["agentbarrier"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 90
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+packages = ["agentbarrier"]

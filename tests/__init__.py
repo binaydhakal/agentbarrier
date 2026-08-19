@@ -1,0 +1,1 @@
+"""AgentBarrier test suite."""
