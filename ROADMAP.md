@@ -22,7 +22,7 @@ Track the complete release in the [`0.3.0` milestone](https://github.com/binaydh
 - [x] Improve [reconciliation coverage for ambiguous post-commit outcomes](https://github.com/binaydhakal/agentbarrier/issues/7).
 - [x] Add a realistic, credential-free [SQLite payment-ledger example](https://github.com/binaydhakal/agentbarrier/issues/8).
 - [x] Complete a deterministic [CrewAI adapter evaluation](https://github.com/binaydhakal/agentbarrier/issues/9).
-- [ ] Pass the complete [`0.3.0` release checklist](https://github.com/binaydhakal/agentbarrier/issues/10).
+- [x] Pass the complete [`0.3.0` release checklist](https://github.com/binaydhakal/agentbarrier/issues/10).
 
 ## How work is prioritized
 
