@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "agentbarrier"
 dynamic = ["version"]
-description = "Deterministic approval and side-effect safety tests for AI agents"
+description = "Runtime approval enforcement and deterministic safety tests for AI agents"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"

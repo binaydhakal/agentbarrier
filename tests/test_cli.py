@@ -8,6 +8,8 @@ import pytest
 
 from agentbarrier import __version__
 from agentbarrier.cli import main
+from agentbarrier.runtime import PolicyDecision, PolicyEffect, RuntimeRequest, RuntimeStatus
+from agentbarrier.runtime.store import SQLiteRuntimeStore
 
 
 def test_cli_version_matches_distribution_metadata(
@@ -141,4 +143,99 @@ def test_cli_generates_and_checks_compatibility_evidence(
 def test_verify_cli_rejects_invalid_targets(target: str) -> None:
     with pytest.raises(SystemExit) as exc:
         main(["verify", target])
+    assert exc.value.code == 2
+
+
+def _pending_runtime_action(path: Path, *, action_id: str = "runtime-action") -> str:
+    request = RuntimeRequest(
+        action_id=action_id,
+        namespace="billing",
+        tool_name="payments.refund",
+        arguments={"request_id": "refund-1", "amount": 100},
+        idempotency_key="refund-1",
+        policy_version="1",
+        created_at_ns=1,
+    )
+    with SQLiteRuntimeStore(path) as store:
+        store.submit(
+            request,
+            PolicyDecision(PolicyEffect.REQUIRE_APPROVAL, "review refunds", "1"),
+        )
+    return request.action_id
+
+
+def test_runtime_approval_cli_lists_shows_approves_and_audits(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path = tmp_path / "runtime.db"
+    action_id = _pending_runtime_action(path)
+
+    assert main(["approvals", "list", "--db", str(path), "--status", "pending", "--json"]) == 0
+    listed = json.loads(capsys.readouterr().out)
+    assert listed[0]["action_id"] == action_id
+    assert listed[0]["status"] == "pending"
+
+    assert main(["approvals", "show", action_id, "--db", str(path), "--json"]) == 0
+    shown = json.loads(capsys.readouterr().out)
+    assert shown["arguments"] == {"amount": 100, "request_id": "refund-1"}
+
+    assert (
+        main(
+            [
+                "approvals",
+                "approve",
+                action_id,
+                "--db",
+                str(path),
+                "--decided-by",
+                "alice",
+                "--reason",
+                "ticket-123",
+            ]
+        )
+        == 0
+    )
+    assert f"approved {action_id}" in capsys.readouterr().out
+    with SQLiteRuntimeStore(path) as store:
+        action = store.get_action(action_id)
+        assert action.status is RuntimeStatus.APPROVED
+        assert action.decided_by == "alice"
+
+    assert main(["audit", "--db", str(path), "--action-id", action_id, "--json"]) == 0
+    audit = json.loads(capsys.readouterr().out)
+    assert audit["chain_valid"] is True
+    assert [item["event"] for item in audit["receipts"]] == [
+        "approval_requested",
+        "approved",
+    ]
+
+
+def test_runtime_approval_cli_rejects_and_handles_empty_lists(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path = tmp_path / "runtime.db"
+    assert main(["approvals", "list", "--db", str(path)]) == 0
+    assert "No runtime actions" in capsys.readouterr().out
+
+    action_id = _pending_runtime_action(path, action_id="reject-me")
+    assert (
+        main(
+            [
+                "approvals",
+                "reject",
+                action_id,
+                "--db",
+                str(path),
+                "--decided-by",
+                "bob",
+            ]
+        )
+        == 0
+    )
+    assert "rejected reject-me" in capsys.readouterr().out
+
+
+def test_runtime_cli_normalizes_unknown_action_to_usage_error(tmp_path: Path) -> None:
+    with pytest.raises(SystemExit) as exc:
+        main(["approvals", "show", "missing", "--db", str(tmp_path / "runtime.db")])
     assert exc.value.code == 2

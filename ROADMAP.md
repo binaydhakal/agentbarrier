@@ -1,7 +1,7 @@
 # Roadmap
 
 AgentBarrier's roadmap is organized around one outcome: make control-plane safety regressions easy
-to reproduce locally and enforce in CI without model credentials.
+to reproduce locally, enforce in CI, and prevent at the production effect boundary.
 
 ## 0.2.0 — broader framework coverage
 
@@ -23,6 +23,39 @@ Track the complete release in the [`0.3.0` milestone](https://github.com/binaydh
 - [x] Add a realistic, credential-free [SQLite payment-ledger example](https://github.com/binaydhakal/agentbarrier/issues/8).
 - [x] Complete a deterministic [CrewAI adapter evaluation](https://github.com/binaydhakal/agentbarrier/issues/9).
 - [x] Pass the complete [`0.3.0` release checklist](https://github.com/binaydhakal/agentbarrier/issues/10).
+
+## 0.4.0 — runtime enforcement
+
+- [ ] Add a deterministic runtime policy engine with allow, deny, and approval decisions.
+- [ ] Protect synchronous and asynchronous Python tool functions at their effect boundary.
+- [ ] Persist approval requests and execution state in a concurrency-safe SQLite store.
+- [ ] Bind approvals and idempotency keys to the exact reviewed tool arguments and policy version.
+- [ ] Add CLI approval, rejection, inspection, and audit-receipt workflows.
+- [ ] Document and test fail-closed recovery for interrupted or ambiguous executions.
+
+## 0.5.0 — protocol and service integrations
+
+- [ ] Add an MCP proxy that enforces the same runtime policies for tool discovery and execution.
+- [ ] Add an authenticated HTTP approval API and outbound decision webhooks.
+- [ ] Connect the runtime layer to supported agent frameworks without duplicating policy logic.
+- [ ] Publish framework-neutral conformance evidence for the runtime boundary.
+
+## 0.6.0 — team operations
+
+- [ ] Add a small self-hosted approval dashboard with live pending-action updates.
+- [ ] Add a PostgreSQL store with migrations and concurrency parity with SQLite.
+- [ ] Add signed Slack approval notifications and decisions.
+- [ ] Document secure single-node and team deployment patterns.
+
+## 1.0.0 — stable production contract
+
+- [ ] Stabilize the public runtime API and publish a compatibility and migration policy.
+- [ ] Add multi-user roles, scoped authorization, and separation of requester and approver.
+- [ ] Add OpenTelemetry traces, metrics, and structured logs without recording secrets by default.
+- [ ] Publish production deployment, backup, recovery, upgrade, and threat-model documentation.
+- [ ] Complete independent release, install, migration, and end-to-end approval audits.
+
+The detailed scope and release gates live in [the runtime delivery plan](docs/runtime-roadmap.md).
 
 ## How work is prioritized
 

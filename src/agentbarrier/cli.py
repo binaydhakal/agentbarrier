@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import inspect
+import json
 import os
 import sys
 from collections.abc import Callable, Sequence
@@ -21,9 +22,13 @@ from agentbarrier.compatibility import (
     select_adapter_specs,
     write_compatibility_outputs,
 )
+from agentbarrier.errors import AgentBarrierError
 from agentbarrier.models import ApprovalBarrierProfile
+from agentbarrier.models import Decision as RuntimeDecision
 from agentbarrier.reporters import render_console, write_json, write_junit, write_sarif
 from agentbarrier.runner import RunnerOptions, SuiteRunner
+from agentbarrier.runtime.models import RuntimeAction, RuntimeReceipt, RuntimeStatus
+from agentbarrier.runtime.store import SQLiteRuntimeStore
 from agentbarrier.scenarios import DEFAULT_SCENARIOS
 
 
@@ -86,7 +91,51 @@ def build_parser() -> argparse.ArgumentParser:
 
     scenarios = commands.add_parser("scenarios", help="list built-in guarantee scenarios")
     scenarios.set_defaults(handler=_list_scenarios)
+
+    approvals = commands.add_parser("approvals", help="inspect and decide runtime approvals")
+    approval_commands = approvals.add_subparsers(dest="approval_command", required=True)
+
+    approval_list = approval_commands.add_parser("list", help="list runtime actions")
+    _add_runtime_db_option(approval_list)
+    approval_list.add_argument(
+        "--status",
+        choices=[status.value for status in RuntimeStatus],
+        help="include only actions in one lifecycle state",
+    )
+    approval_list.add_argument("--json", action="store_true", help="write JSON to stdout")
+    approval_list.set_defaults(handler=_run_approvals_list)
+
+    approval_show = approval_commands.add_parser("show", help="show one exact runtime action")
+    approval_show.add_argument("action_id")
+    _add_runtime_db_option(approval_show)
+    approval_show.add_argument("--json", action="store_true", help="write JSON to stdout")
+    approval_show.set_defaults(handler=_run_approvals_show)
+
+    for name, decision in (
+        ("approve", RuntimeDecision.APPROVE),
+        ("reject", RuntimeDecision.REJECT),
+    ):
+        decision_parser = approval_commands.add_parser(name, help=f"{name} a pending action")
+        decision_parser.add_argument("action_id")
+        _add_runtime_db_option(decision_parser)
+        decision_parser.add_argument(
+            "--decided-by",
+            required=True,
+            help="reviewer identity recorded in the audit receipt",
+        )
+        decision_parser.add_argument("--reason", help="optional decision reason")
+        decision_parser.set_defaults(handler=_run_approval_decision, decision=decision)
+
+    audit = commands.add_parser("audit", help="inspect and verify runtime audit receipts")
+    _add_runtime_db_option(audit)
+    audit.add_argument("--action-id", help="include receipts for one action")
+    audit.add_argument("--json", action="store_true", help="write JSON to stdout")
+    audit.set_defaults(handler=_run_runtime_audit)
     return parser
+
+
+def _add_runtime_db_option(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--db", required=True, metavar="PATH", help="runtime SQLite database")
 
 
 def _add_run_options(parser: argparse.ArgumentParser) -> None:
@@ -179,6 +228,114 @@ def _run_compatibility(arguments: argparse.Namespace) -> int:
     return int(evidence_has_errors(evidence, strict_missing=arguments.strict_missing))
 
 
+def _run_approvals_list(arguments: argparse.Namespace) -> int:
+    with SQLiteRuntimeStore(cast(str, arguments.db)) as store:
+        status = RuntimeStatus(arguments.status) if arguments.status else None
+        actions = store.list_actions(status=status)
+    if arguments.json:
+        print(json.dumps([_action_payload(action) for action in actions], indent=2, sort_keys=True))
+        return 0
+    if not actions:
+        print("No runtime actions found.")
+        return 0
+    print(f"{'ACTION ID':36}  {'STATUS':10}  TOOL")
+    for action in actions:
+        print(f"{action.action_id:36}  {action.status.value:10}  {action.tool_name}")
+    return 0
+
+
+def _run_approvals_show(arguments: argparse.Namespace) -> int:
+    with SQLiteRuntimeStore(cast(str, arguments.db)) as store:
+        action = store.get_action(cast(str, arguments.action_id))
+    payload = _action_payload(action)
+    if arguments.json:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+    else:
+        for key, value in payload.items():
+            rendered = (
+                json.dumps(value, sort_keys=True) if isinstance(value, (dict, list)) else value
+            )
+            print(f"{key}: {rendered}")
+    return 0
+
+
+def _run_approval_decision(arguments: argparse.Namespace) -> int:
+    decision = cast(RuntimeDecision, arguments.decision)
+    with SQLiteRuntimeStore(cast(str, arguments.db)) as store:
+        action = store.decide(
+            cast(str, arguments.action_id),
+            decision,
+            decided_by=cast(str, arguments.decided_by),
+            reason=cast(str | None, arguments.reason),
+        )
+    past_tense = "approved" if decision is RuntimeDecision.APPROVE else "rejected"
+    print(f"{past_tense} {action.action_id} ({action.tool_name})")
+    return 0
+
+
+def _run_runtime_audit(arguments: argparse.Namespace) -> int:
+    with SQLiteRuntimeStore(cast(str, arguments.db)) as store:
+        receipts = store.receipts(action_id=cast(str | None, arguments.action_id))
+        chain_valid = store.verify_receipt_chain()
+    if arguments.json:
+        print(
+            json.dumps(
+                {
+                    "chain_valid": chain_valid,
+                    "receipts": [_receipt_payload(receipt) for receipt in receipts],
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+    else:
+        print(f"Receipt chain: {'valid' if chain_valid else 'INVALID'}")
+        for receipt in receipts:
+            actor = receipt.actor or "-"
+            print(
+                f"{receipt.sequence:6}  {receipt.event.value:22}  "
+                f"{receipt.action_id}  actor={actor}"
+            )
+    return 0 if chain_valid else 1
+
+
+def _action_payload(action: RuntimeAction) -> dict[str, object]:
+    return {
+        "action_id": action.action_id,
+        "namespace": action.namespace,
+        "tool_name": action.tool_name,
+        "arguments": dict(action.arguments),
+        "idempotency_key": action.idempotency_key,
+        "request_digest": action.request_digest,
+        "policy_version": action.policy_version,
+        "policy_rule": action.policy_rule,
+        "policy_effect": action.policy_effect.value,
+        "status": action.status.value,
+        "created_at_ns": action.created_at_ns,
+        "updated_at_ns": action.updated_at_ns,
+        "expires_at_ns": action.expires_at_ns,
+        "result": action.result if action.result_available else None,
+        "result_available": action.result_available,
+        "error": action.error,
+        "decided_by": action.decided_by,
+        "decision_reason": action.decision_reason,
+    }
+
+
+def _receipt_payload(receipt: RuntimeReceipt) -> dict[str, object]:
+    return {
+        "sequence": receipt.sequence,
+        "action_id": receipt.action_id,
+        "event": receipt.event.value,
+        "timestamp_ns": receipt.timestamp_ns,
+        "request_digest": receipt.request_digest,
+        "actor": receipt.actor,
+        "detail": receipt.detail,
+        "previous_hash": receipt.previous_hash,
+        "receipt_hash": receipt.receipt_hash,
+    }
+
+
 def _use_color(mode: str) -> bool:
     if mode == "always":
         return True
@@ -214,7 +371,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     arguments = parser.parse_args(argv)
     try:
         return int(arguments.handler(arguments))
-    except (ImportError, AttributeError, TypeError, ValueError) as exc:
+    except (AgentBarrierError, ImportError, AttributeError, KeyError, TypeError, ValueError) as exc:
         parser.error(str(exc))
     return 2
 

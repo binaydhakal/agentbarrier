@@ -6,6 +6,16 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+### Added
+
+- Ordered runtime policy rules with deterministic allow, deny, and require-approval decisions.
+- Sync and async Python function protection with exact argument and policy-version binding.
+- Transactional SQLite approval state, atomic execution claims, idempotent result replay, approval
+  expiry, and fail-closed unknown outcomes.
+- Integrity-linked runtime receipts and CLI workflows for listing, inspecting, approving,
+  rejecting, and auditing actions.
+- Credential-free runtime refund example and a versioned delivery plan through 1.0.0.
+
 ## [0.3.0] - 2026-08-20
 
 ### Added

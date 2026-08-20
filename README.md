@@ -9,7 +9,7 @@
 # AgentBarrier
 
 <p align="center">
-  <strong>Prove your AI agent cannot act after rejection, cancellation, timeout, or replay.</strong>
+  <strong>Enforce and prove safe approval boundaries for AI-agent actions.</strong>
 </p>
 
 <p align="center">
@@ -27,6 +27,11 @@ effects.
 It does not judge model responses and does not need an API key. AgentBarrier invokes controlled
 sentinel tools, observes their effects outside the agent framework, and reports whether the
 framework or application honored the expected lifecycle boundary.
+
+Runtime enforcement is being developed on `main` for 0.4.0. It applies deterministic allow, deny,
+and approval rules directly around synchronous and asynchronous Python tool functions, persists
+exact approval state in SQLite, prevents duplicate execution, and emits integrity-linked audit
+receipts. See the [runtime guide](https://github.com/binaydhakal/agentbarrier/blob/main/docs/runtime.md).
 
 > **Status:** early development. The public adapter contract is usable, but compatibility should
 > be pinned until the first stable release.
