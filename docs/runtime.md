@@ -38,9 +38,11 @@ policy = RuntimePolicy(
 store = SQLiteRuntimeStore("agentbarrier.db")
 barrier = RuntimeBarrier(policy=policy, store=store, namespace="support-agent")
 
+
 def refund(request_id: str, account_id: str, amount: int) -> dict[str, object]:
     # Call the real payment boundary here.
     return {"request_id": request_id, "status": "refunded"}
+
 
 safe_refund = barrier.protect(
     refund,

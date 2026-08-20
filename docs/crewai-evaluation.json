@@ -225,7 +225,7 @@
     "name": "agentbarrier",
     "python_implementation": "CPython",
     "python_version": "3.11",
-    "version": "0.3.0"
+    "version": "0.4.0.dev0"
   },
   "profiles": [
     "run-wide",
