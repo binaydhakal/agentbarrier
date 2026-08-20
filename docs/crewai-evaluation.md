@@ -34,6 +34,10 @@ The probe temporarily sets CrewAI's two documented telemetry-disable environment
 restores their prior values after every run. Tests also verify the adapter without model
 credentials.
 
+On Python 3.10, the extra constrains `onnxruntime` below 1.24 because 1.24 no longer publishes a
+CPython 3.10 wheel. CrewAI 1.15.17 resolves to `onnxruntime` 1.23.2 in that environment; Python
+3.11–3.13 retain the current compatible release selected by the lockfile.
+
 ## Supported observations
 
 - Approval holds the exact gated call before its sentinel effect.
