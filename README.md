@@ -48,6 +48,8 @@ using the current MCP 2026-07-28 protocol through its official Python SDK.
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/mcp-gateway.md">MCP gateway</a>
   ·
+  <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/approval-api.md">Approval API</a>
+  ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/compatibility.md">Compatibility</a>
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/ci.md">CI guide</a>
@@ -104,6 +106,10 @@ The HTTP listener binds to `127.0.0.1:8765` by default. Each call must supply st
 identity through the configured argument path or the `agentbarrier/idempotencyKey` MCP metadata
 field. See the [MCP gateway guide](docs/mcp-gateway.md) for the policy example, approval flow,
 security boundary, and current development limitations.
+
+The same runtime database can be reviewed from the development authenticated HTTP service. It uses
+scoped bearer identities, takes the reviewer name from authentication rather than request data, and
+serves an OpenAPI 3.1 contract. See the [approval API guide](docs/approval-api.md).
 
 ## See a real control failure
 

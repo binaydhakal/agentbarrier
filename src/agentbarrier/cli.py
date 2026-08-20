@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import importlib
 import inspect
 import json
@@ -28,12 +29,8 @@ from agentbarrier.models import ApprovalBarrierProfile, JsonValue
 from agentbarrier.models import Decision as RuntimeDecision
 from agentbarrier.reporters import render_console, write_json, write_junit, write_sarif
 from agentbarrier.runner import RunnerOptions, SuiteRunner
-from agentbarrier.runtime.models import (
-    RuntimeAction,
-    RuntimeReceipt,
-    RuntimeReconciliation,
-    RuntimeStatus,
-)
+from agentbarrier.runtime.models import RuntimeReconciliation, RuntimeStatus
+from agentbarrier.runtime.serialization import action_payload, receipt_payload
 from agentbarrier.runtime.store import SQLiteRuntimeStore
 from agentbarrier.scenarios import DEFAULT_SCENARIOS
 
@@ -193,6 +190,31 @@ def build_parser() -> argparse.ArgumentParser:
     mcp_http.add_argument("--port", type=int, default=8765, help="listen port (default: 8765)")
     mcp_http.add_argument("--path", default="/mcp", help="MCP endpoint path (default: /mcp)")
     mcp_http.set_defaults(handler=_run_mcp_gateway)
+
+    api = commands.add_parser("api", help="run the authenticated approval HTTP API")
+    _add_runtime_db_option(api)
+    api.add_argument(
+        "--auth-config",
+        required=True,
+        metavar="PATH",
+        help="strict JSON file containing scoped bearer-token SHA-256 values",
+    )
+    api.add_argument("--host", default="127.0.0.1", help="listen host (default: 127.0.0.1)")
+    api.add_argument("--port", type=int, default=8787, help="listen port (default: 8787)")
+    api.set_defaults(handler=_run_approval_api)
+
+    auth = commands.add_parser("auth", help="manage approval-service authentication material")
+    auth_commands = auth.add_subparsers(dest="auth_command", required=True)
+    hash_token = auth_commands.add_parser(
+        "hash-token",
+        help="hash a bearer token for an approval API auth file",
+    )
+    hash_token.add_argument(
+        "--token-env",
+        metavar="NAME",
+        help="read the token from this environment variable instead of a hidden prompt",
+    )
+    hash_token.set_defaults(handler=_run_hash_token)
     return parser
 
 
@@ -329,7 +351,7 @@ def _run_approvals_list(arguments: argparse.Namespace) -> int:
         status = RuntimeStatus(arguments.status) if arguments.status else None
         actions = store.list_actions(status=status)
     if arguments.json:
-        print(json.dumps([_action_payload(action) for action in actions], indent=2, sort_keys=True))
+        print(json.dumps([action_payload(action) for action in actions], indent=2, sort_keys=True))
         return 0
     if not actions:
         print("No runtime actions found.")
@@ -343,7 +365,7 @@ def _run_approvals_list(arguments: argparse.Namespace) -> int:
 def _run_approvals_show(arguments: argparse.Namespace) -> int:
     with SQLiteRuntimeStore(cast(str, arguments.db)) as store:
         action = store.get_action(cast(str, arguments.action_id))
-    payload = _action_payload(action)
+    payload = action_payload(action)
     if arguments.json:
         print(json.dumps(payload, indent=2, sort_keys=True))
     else:
@@ -398,7 +420,7 @@ def _run_runtime_audit(arguments: argparse.Namespace) -> int:
             json.dumps(
                 {
                     "chain_valid": chain_valid,
-                    "receipts": [_receipt_payload(receipt) for receipt in receipts],
+                    "receipts": [receipt_payload(receipt) for receipt in receipts],
                 },
                 indent=2,
                 sort_keys=True,
@@ -487,49 +509,42 @@ def _run_mcp_gateway(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def _run_approval_api(arguments: argparse.Namespace) -> int:
+    try:
+        from agentbarrier.service.runner import run_approval_api
+    except ImportError as error:
+        raise ImportError(
+            "approval API dependencies are unavailable; install 'agentbarrier[service]'"
+        ) from error
+    run_approval_api(
+        database_path=cast(str, arguments.db),
+        auth_path=cast(str, arguments.auth_config),
+        host=cast(str, arguments.host),
+        port=cast(int, arguments.port),
+    )
+    return 0
+
+
+def _run_hash_token(arguments: argparse.Namespace) -> int:
+    from agentbarrier.service.auth import hash_bearer_token
+
+    environment_name = cast(str | None, arguments.token_env)
+    if environment_name is not None:
+        if not environment_name.strip():
+            raise ValueError("--token-env must not be empty")
+        token = os.environ.get(environment_name)
+        if token is None:
+            raise ValueError(f"environment variable {environment_name!r} is not set")
+    else:
+        token = getpass.getpass("Bearer token: ")
+    print(hash_bearer_token(token))
+    return 0
+
+
 def _require_existing_runtime_db(path: str) -> None:
     database_path = Path(path).expanduser()
     if not database_path.is_file():
         raise FileNotFoundError(f"runtime database does not exist: {database_path}")
-
-
-def _action_payload(action: RuntimeAction) -> dict[str, object]:
-    return {
-        "action_id": action.action_id,
-        "namespace": action.namespace,
-        "tool_name": action.tool_name,
-        "arguments": dict(action.arguments),
-        "idempotency_key": action.idempotency_key,
-        "request_digest": action.request_digest,
-        "policy_version": action.policy_version,
-        "policy_rule": action.policy_rule,
-        "policy_effect": action.policy_effect.value,
-        "status": action.status.value,
-        "created_at_ns": action.created_at_ns,
-        "updated_at_ns": action.updated_at_ns,
-        "expires_at_ns": action.expires_at_ns,
-        "approval_ttl_ns": action.approval_ttl_ns,
-        "execution_lease_expires_at_ns": action.execution_lease_expires_at_ns,
-        "result": action.result if action.result_available else None,
-        "result_available": action.result_available,
-        "error": action.error,
-        "decided_by": action.decided_by,
-        "decision_reason": action.decision_reason,
-    }
-
-
-def _receipt_payload(receipt: RuntimeReceipt) -> dict[str, object]:
-    return {
-        "sequence": receipt.sequence,
-        "action_id": receipt.action_id,
-        "event": receipt.event.value,
-        "timestamp_ns": receipt.timestamp_ns,
-        "request_digest": receipt.request_digest,
-        "actor": receipt.actor,
-        "detail": receipt.detail,
-        "previous_hash": receipt.previous_hash,
-        "receipt_hash": receipt.receipt_hash,
-    }
 
 
 def _use_color(mode: str) -> bool:

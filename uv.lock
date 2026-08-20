@@ -45,6 +45,7 @@ all = [
     { name = "mcp", version = "2.0.0", source = { registry = "https://pypi.org/simple" } },
     { name = "openai-agents" },
     { name = "pydantic-ai-slim" },
+    { name = "starlette" },
     { name = "uvicorn" },
 ]
 autogen = [
@@ -69,6 +70,10 @@ openai = [
 ]
 pydantic-ai = [
     { name = "pydantic-ai-slim" },
+]
+service = [
+    { name = "starlette" },
+    { name = "uvicorn" },
 ]
 test = [
     { name = "build" },
@@ -102,11 +107,14 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.3" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=6.0" },
     { name = "ruff", marker = "extra == 'test'", specifier = ">=0.11" },
+    { name = "starlette", marker = "extra == 'all'", specifier = ">=0.47,<2" },
+    { name = "starlette", marker = "extra == 'service'", specifier = ">=0.47,<2" },
     { name = "twine", marker = "extra == 'test'", specifier = ">=6.1" },
     { name = "uvicorn", marker = "extra == 'all'", specifier = ">=0.34,<1" },
     { name = "uvicorn", marker = "extra == 'mcp'", specifier = ">=0.34,<1" },
+    { name = "uvicorn", marker = "extra == 'service'", specifier = ">=0.34,<1" },
 ]
-provides-extras = ["all", "autogen", "crewai", "google-adk", "langgraph", "mcp", "openai", "pydantic-ai", "test"]
+provides-extras = ["all", "autogen", "crewai", "google-adk", "langgraph", "mcp", "openai", "pydantic-ai", "service", "test"]
 
 [[package]]
 name = "aiofiles"

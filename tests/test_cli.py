@@ -11,6 +11,8 @@ from agentbarrier.cli import main
 from agentbarrier.mcp import runner as mcp_runner
 from agentbarrier.runtime import PolicyDecision, PolicyEffect, RuntimeRequest, RuntimeStatus
 from agentbarrier.runtime.store import SQLiteRuntimeStore
+from agentbarrier.service import runner as service_runner
+from agentbarrier.service.auth import hash_bearer_token
 
 
 def test_cli_version_matches_distribution_metadata(
@@ -146,6 +148,57 @@ def test_mcp_http_cli_uses_safe_listen_defaults(
         == 0
     )
     assert captured[0][1:] == ("127.0.0.1", 8765, "/mcp")
+
+
+def test_approval_api_cli_uses_safe_listen_defaults(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: list[dict[str, object]] = []
+
+    def run_approval_api(**keywords: object) -> None:
+        captured.append(keywords)
+
+    monkeypatch.setattr(service_runner, "run_approval_api", run_approval_api)
+    database = tmp_path / "runtime.db"
+    auth_config = tmp_path / "auth.json"
+    assert (
+        main(
+            [
+                "api",
+                "--db",
+                str(database),
+                "--auth-config",
+                str(auth_config),
+            ]
+        )
+        == 0
+    )
+    assert captured == [
+        {
+            "database_path": str(database),
+            "auth_path": str(auth_config),
+            "host": "127.0.0.1",
+            "port": 8787,
+        }
+    ]
+
+
+def test_auth_hash_token_reads_secret_from_environment_without_echoing_it(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    token = "generated-token-0123456789"
+    monkeypatch.setenv("AGENTBARRIER_TEST_TOKEN", token)
+    assert main(["auth", "hash-token", "--token-env", "AGENTBARRIER_TEST_TOKEN"]) == 0
+    output = capsys.readouterr().out.strip()
+    assert output == hash_bearer_token(token)
+    assert token not in output
+
+    monkeypatch.delenv("AGENTBARRIER_TEST_TOKEN")
+    with pytest.raises(SystemExit) as raised:
+        main(["auth", "hash-token", "--token-env", "AGENTBARRIER_TEST_TOKEN"])
+    assert raised.value.code == 2
 
 
 def test_cli_can_force_color(capsys: pytest.CaptureFixture[str]) -> None:

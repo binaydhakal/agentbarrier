@@ -37,6 +37,11 @@ idempotency resolver are also trusted. The downstream MCP client, its JSON-RPC r
 tool arguments, and arbitrary request metadata are untrusted. An idempotency value is identity, not
 authority: policy still evaluates every exact request.
 
+For the approval API, the static auth file, entropy of the original bearer tokens, TLS or trusted
+local ingress, and service operator are trusted. Only token SHA-256 values are stored in the auth
+file. Because an unsalted digest does not protect a weak token from offline guessing, operators must
+generate high-entropy random tokens and protect the digest file as credential material.
+
 An application result is meaningful only when the sentinel replaces the production tool at the
 same complete-mediation boundary. Replacing a tool earlier tests planning but can miss a later
 execution bypass. Replacing it later can allow unsafe work before observation.
@@ -80,6 +85,11 @@ command, URL, API token, or network route remains available to the agent.
   and network isolation from the upstream endpoint until native service authorization ships.
 - Cancellation and upstream failures after an execution claim become `unknown`. The gateway
   cannot infer whether an external side effect committed from a closed stream or protocol error.
+- Approval API reviewer identity comes only from the authenticated token subject. The JSON body
+  cannot select or override it, and read, decision, and audit access use distinct exact scopes.
+- The API uses bearer headers rather than cookies, emits no permissive cross-origin headers, limits
+  decision bodies, and returns no-store responses. It still requires TLS or a trusted local reverse
+  proxy whenever traffic leaves loopback.
 
 ## Out of scope
 
@@ -95,6 +105,7 @@ AgentBarrier does not:
 - stop code that bypasses the protected function wrapper;
 - stop an MCP client that can bypass the gateway and call the upstream server directly;
 - authenticate public MCP clients in the current 0.5.0 development slice;
+- provide an identity provider, token rotation service, or TLS termination for the approval API;
 - invent a reliable business idempotency key from a JSON-RPC request ID;
 - secure, sign, encrypt, replicate, or retain the SQLite database and its backups;
 - authenticate CLI reviewer names or provide multi-user authorization in 0.4;

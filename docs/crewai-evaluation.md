@@ -6,7 +6,7 @@ kept separate from the main compatibility artifact because CrewAI 1.15.17 requir
 cannot be installed into one Python environment.
 
 <!-- agentbarrier:compatibility:start -->
-Canonical evidence: Python 3.11 · AgentBarrier 0.4.0 · `run-wide` profile
+Canonical evidence: Python 3.11 · AgentBarrier 0.5.0.dev0 · `run-wide` profile
 
 | Adapter | Version | Approval | Rejection | Args | Replay | Unknown | Reconcile | Cancel | Timeout | Parallel | Delegation | Audit |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |

@@ -54,6 +54,10 @@ mcp = [
   "mcp>=2,<3",
   "uvicorn>=0.34,<1",
 ]
+service = [
+  "starlette>=0.47,<2",
+  "uvicorn>=0.34,<1",
+]
 openai = ["openai-agents>=0.22,<1"]
 langgraph = ["langgraph>=1.2,<2; python_version >= '3.11'"]
 pydantic-ai = ["pydantic-ai-slim>=2.32,<3"]
@@ -74,6 +78,7 @@ test = [
 ]
 all = [
   "mcp>=2,<3",
+  "starlette>=0.47,<2",
   "uvicorn>=0.34,<1",
   "openai-agents>=0.22,<1",
   "langgraph>=1.2,<2; python_version >= '3.11'",

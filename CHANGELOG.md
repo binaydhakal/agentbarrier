@@ -15,6 +15,11 @@ All notable changes to this project will be documented in this file. The format 
   protection, result replay, reconnect handling, progress forwarding, and fail-closed upstream
   cancellation or failure behavior.
 - Optional `mcp` dependency group and `agentbarrier mcp stdio|http` operational commands.
+- Authenticated approval HTTP API with SHA-256-configured bearer credentials, exact read/decision/
+  audit scopes, identity-bound decisions, idempotent decision replay, stable JSON errors,
+  pagination, security headers, request-size limits, and a generated OpenAPI 3.1 document.
+- Optional `service` dependency group, safe-loopback `agentbarrier api` runner, and hidden-prompt or
+  environment-based `agentbarrier auth hash-token` setup command.
 
 ## [0.4.0] - 2026-08-20
 
