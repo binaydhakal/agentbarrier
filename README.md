@@ -53,6 +53,8 @@ approval API, and [durable signed webhooks](docs/webhooks.md) for approval and o
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/webhooks.md">Webhooks</a>
   ·
+  <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/framework-runtime.md">Framework runtime</a>
+  ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/compatibility.md">Compatibility</a>
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/ci.md">CI guide</a>
@@ -118,6 +120,11 @@ Durable outbound webhooks can notify a separate approval UI, queue, SIEM, or inc
 They use HMAC-SHA256 signatures, automatic and configured secret redaction, bounded retries,
 crash-safe claims, stable event IDs, and explicit dead-letter recovery. See the
 [signed webhook guide](docs/webhooks.md).
+
+OpenAI Agents Python applications can construct a normal SDK `FunctionTool` whose original Python
+callable is protected by the same durable runtime boundary. It supports SDK-injected context while
+keeping business policy bound only to the exact tool arguments. See the
+[framework runtime guide](docs/framework-runtime.md).
 
 ## See a real control failure
 

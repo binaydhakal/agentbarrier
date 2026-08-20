@@ -24,6 +24,9 @@ All notable changes to this project will be documented in this file. The format 
   and configured argument redaction, canonical CloudEvents-shaped bodies, HMAC-SHA256 verification,
   transactional outbox checkpoints, crash-safe claims, bounded retries, dead-letter status, and
   exact operator-triggered recovery commands.
+- OpenAI Agents Python runtime tool builder with context-aware argument binding, required business
+  idempotency, normal SDK schemas and options, durable approval and replay, and fail-closed exception
+  and timeout behavior.
 
 ## [0.4.0] - 2026-08-20
 

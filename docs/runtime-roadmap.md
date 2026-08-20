@@ -57,8 +57,8 @@ Deliverables:
 - protocol-level conformance fixtures that do not require model credentials.
 
 The development branch now has the transport-neutral runtime boundary, MCP tool gateway, scoped
-approval API, and durable signed webhook worker. Raw transport conformance, framework runtime
-adapters, and clean-wheel audits remain release gates.
+approval API, durable signed webhook worker, and OpenAI Agents runtime tool builder. Raw transport
+conformance, remaining framework runtime adapters, and clean-wheel audits remain release gates.
 
 Release gates:
 

@@ -108,6 +108,10 @@ command, URL, API token, or network route remains available to the agent.
 - HTTPS is required off loopback and redirects are disabled, but a trusted operator can still
   configure an internal or sensitive network target. Isolate worker egress and allow-list receiver
   destinations where the deployment requires SSRF resistance.
+- The OpenAI Agents runtime builder excludes SDK-injected context from policy arguments and requires
+  application business identity rather than an SDK tool-call ID. It is complete mediation only if
+  every consequential route uses the returned `FunctionTool` and cannot call the original function
+  or downstream credential directly.
 
 ## Out of scope
 
