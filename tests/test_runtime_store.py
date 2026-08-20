@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import multiprocessing
 import sqlite3
+import time
 from pathlib import Path
 
 import pytest
@@ -25,6 +27,25 @@ from agentbarrier.runtime import (
 )
 from agentbarrier.runtime.models import ClaimOutcome
 from agentbarrier.runtime.store import SQLiteRuntimeStore
+
+
+def _claim_in_subprocess(
+    path: Path,
+    action_id: str,
+    request_digest: str,
+    ready: object,
+    gate: object,
+    results: object,
+    lease_seconds: float = 300,
+) -> None:
+    ready.put(True)  # type: ignore[attr-defined]
+    gate.wait(10)  # type: ignore[attr-defined]
+    with SQLiteRuntimeStore(path, execution_lease_seconds=lease_seconds) as store:
+        try:
+            outcome = store.claim(action_id, request_digest=request_digest).outcome.value
+        except ActionInProgress:
+            outcome = "in_progress"
+    results.put(outcome)  # type: ignore[attr-defined]
 
 
 class Clock:
@@ -342,6 +363,71 @@ def test_two_store_connections_cannot_claim_the_same_action(tmp_path: Path) -> N
         )
 
 
+def test_two_processes_cannot_claim_the_same_action(tmp_path: Path) -> None:
+    path = tmp_path / "runtime.db"
+    clock = Clock()
+    with SQLiteRuntimeStore(path, clock_ns=clock) as store:
+        request = make_request(clock)
+        action = store.submit(
+            request,
+            PolicyDecision(PolicyEffect.ALLOW, "safe", "1"),
+        )
+
+    context = multiprocessing.get_context("spawn")
+    ready = context.Queue()
+    gate = context.Event()
+    results = context.Queue()
+    processes = [
+        context.Process(
+            target=_claim_in_subprocess,
+            args=(path, action.action_id, request.request_digest, ready, gate, results),
+        )
+        for _ in range(2)
+    ]
+    for process in processes:
+        process.start()
+    assert ready.get(timeout=10) is True
+    assert ready.get(timeout=10) is True
+    gate.set()
+    for process in processes:
+        process.join(timeout=10)
+        assert process.exitcode == 0
+
+    assert sorted([results.get(timeout=2), results.get(timeout=2)]) == ["execute", "in_progress"]
+
+
+def test_subprocess_exit_after_claim_expires_to_unknown(tmp_path: Path) -> None:
+    path = tmp_path / "runtime.db"
+    clock = Clock()
+    with SQLiteRuntimeStore(path, clock_ns=clock) as store:
+        request = make_request(clock)
+        action = store.submit(
+            request,
+            PolicyDecision(PolicyEffect.ALLOW, "safe", "1"),
+        )
+
+    context = multiprocessing.get_context("spawn")
+    ready = context.Queue()
+    gate = context.Event()
+    results = context.Queue()
+    process = context.Process(
+        target=_claim_in_subprocess,
+        args=(path, action.action_id, request.request_digest, ready, gate, results, 0.01),
+    )
+    process.start()
+    assert ready.get(timeout=10) is True
+    gate.set()
+    assert results.get(timeout=10) == "execute"
+    process.join(timeout=10)
+    assert process.exitcode == 0
+    time.sleep(0.02)
+
+    with SQLiteRuntimeStore(path) as store:
+        abandoned = store.get_action(action.action_id)
+        assert abandoned.status is RuntimeStatus.UNKNOWN
+        assert abandoned.error == "ExecutionLeaseExpired"
+
+
 def test_store_validates_decisions_transitions_and_unknown_actions(tmp_path: Path) -> None:
     clock = Clock()
     with SQLiteRuntimeStore(tmp_path / "runtime.db", clock_ns=clock) as store:
@@ -372,6 +458,31 @@ def test_store_detects_receipt_tampering(tmp_path: Path) -> None:
         connection.commit()
         connection.close()
         assert not store.verify_receipt_chain()
+
+
+def test_store_writes_consistent_non_overwriting_backup(tmp_path: Path) -> None:
+    path = tmp_path / "runtime.db"
+    backup_path = tmp_path / "backups" / "runtime.db"
+    backup_path.parent.mkdir()
+    clock = Clock()
+    with SQLiteRuntimeStore(path, clock_ns=clock) as store:
+        request = make_request(clock)
+        store.submit(request, approval())
+        assert store.schema_version == "2"
+        assert store.backup(backup_path) == backup_path
+
+    assert backup_path.stat().st_mode & 0o777 == 0o600
+    with SQLiteRuntimeStore(backup_path) as backup:
+        assert len(backup.list_actions()) == 1
+        assert backup.verify_receipt_chain()
+
+    with SQLiteRuntimeStore(path) as store:
+        with pytest.raises(FileExistsError, match="already exists"):
+            store.backup(backup_path)
+        with pytest.raises(ValueError, match="different"):
+            store.backup(path)
+        with pytest.raises(FileNotFoundError, match="directory"):
+            store.backup(tmp_path / "missing" / "runtime.db")
 
 
 def test_store_rejects_unknown_schema_version(tmp_path: Path) -> None:

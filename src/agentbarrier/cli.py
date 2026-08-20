@@ -9,6 +9,7 @@ import json
 import os
 import sys
 from collections.abc import Callable, Sequence
+from pathlib import Path
 from typing import Any, cast
 
 from agentbarrier import __version__
@@ -154,6 +155,27 @@ def build_parser() -> argparse.ArgumentParser:
     audit.add_argument("--action-id", help="include receipts for one action")
     audit.add_argument("--json", action="store_true", help="write JSON to stdout")
     audit.set_defaults(handler=_run_runtime_audit)
+
+    database = commands.add_parser("database", help="inspect, migrate, and back up runtime state")
+    database_commands = database.add_subparsers(dest="database_command", required=True)
+
+    database_status = database_commands.add_parser("status", help="inspect runtime database state")
+    _add_runtime_db_option(database_status)
+    database_status.add_argument("--json", action="store_true", help="write JSON to stdout")
+    database_status.set_defaults(handler=_run_database_status)
+
+    database_migrate = database_commands.add_parser(
+        "migrate", help="apply supported runtime schema migrations"
+    )
+    _add_runtime_db_option(database_migrate)
+    database_migrate.set_defaults(handler=_run_database_migrate)
+
+    database_backup = database_commands.add_parser(
+        "backup", help="write a consistent runtime database backup"
+    )
+    _add_runtime_db_option(database_backup)
+    database_backup.add_argument("--output", required=True, metavar="PATH")
+    database_backup.set_defaults(handler=_run_database_backup)
     return parser
 
 
@@ -342,6 +364,50 @@ def _run_runtime_audit(arguments: argparse.Namespace) -> int:
     return 0 if chain_valid else 1
 
 
+def _run_database_status(arguments: argparse.Namespace) -> int:
+    database_path = cast(str, arguments.db)
+    _require_existing_runtime_db(database_path)
+    with SQLiteRuntimeStore(database_path) as store:
+        actions = store.list_actions()
+        receipts = store.receipts()
+        payload = {
+            "schema_version": store.schema_version,
+            "actions": len(actions),
+            "receipts": len(receipts),
+            "receipt_chain_valid": store.verify_receipt_chain(),
+        }
+    if arguments.json:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+    else:
+        print(f"Schema version: {payload['schema_version']}")
+        print(f"Actions: {payload['actions']}")
+        print(f"Receipts: {payload['receipts']}")
+        print(f"Receipt chain: {'valid' if payload['receipt_chain_valid'] else 'INVALID'}")
+    return 0 if payload["receipt_chain_valid"] else 1
+
+
+def _run_database_migrate(arguments: argparse.Namespace) -> int:
+    with SQLiteRuntimeStore(cast(str, arguments.db)) as store:
+        version = store.schema_version
+    print(f"Runtime database is at schema version {version}")
+    return 0
+
+
+def _run_database_backup(arguments: argparse.Namespace) -> int:
+    database_path = cast(str, arguments.db)
+    _require_existing_runtime_db(database_path)
+    with SQLiteRuntimeStore(database_path) as store:
+        destination = store.backup(cast(str, arguments.output))
+    print(f"Runtime database backup written to {destination}")
+    return 0
+
+
+def _require_existing_runtime_db(path: str) -> None:
+    database_path = Path(path).expanduser()
+    if not database_path.is_file():
+        raise FileNotFoundError(f"runtime database does not exist: {database_path}")
+
+
 def _action_payload(action: RuntimeAction) -> dict[str, object]:
     return {
         "action_id": action.action_id,
@@ -415,7 +481,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     arguments = parser.parse_args(argv)
     try:
         return int(arguments.handler(arguments))
-    except (AgentBarrierError, ImportError, AttributeError, KeyError, TypeError, ValueError) as exc:
+    except (
+        AgentBarrierError,
+        ImportError,
+        AttributeError,
+        KeyError,
+        OSError,
+        TypeError,
+        ValueError,
+    ) as exc:
         parser.error(str(exc))
     return 2
 

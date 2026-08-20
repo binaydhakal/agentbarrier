@@ -13,7 +13,12 @@ All notable changes to this project will be documented in this file. The format 
 - Transactional SQLite approval state, atomic execution claims, idempotent result replay, approval
   expiry, and fail-closed unknown outcomes.
 - Integrity-linked runtime receipts and CLI workflows for listing, inspecting, approving,
-  rejecting, and auditing actions.
+  rejecting, reconciling, and auditing actions.
+- Execution leases, fail-closed abandoned-worker recovery, explicit unknown-outcome reconciliation,
+  and automatic SQLite schema migration.
+- Strict runtime policy JSON Schema, condition validation, public runtime API reference, and runtime
+  threat model.
+- Runtime database status, migration, and non-overwriting integrity-checked backup commands.
 - Credential-free runtime refund example and a versioned delivery plan through 1.0.0.
 
 ## [0.3.0] - 2026-08-20

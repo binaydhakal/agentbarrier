@@ -8,7 +8,7 @@ import sqlite3
 import threading
 import time
 from collections.abc import Callable, Iterator
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from hashlib import sha256
 from pathlib import Path
 from types import TracebackType
@@ -568,6 +568,48 @@ class SQLiteRuntimeStore:
                 return False
             previous_hash = receipt.receipt_hash
         return True
+
+    @property
+    def schema_version(self) -> str:
+        """Return the migrated runtime database schema version."""
+
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT value FROM runtime_metadata WHERE key = 'schema_version'"
+            ).fetchone()
+        if row is None:  # pragma: no cover - initialization always creates the row
+            raise RuntimeError("runtime database has no schema version")
+        return str(row["value"])
+
+    def backup(self, destination: str | Path) -> Path:
+        """Write a consistent, integrity-checked backup without replacing an existing file."""
+
+        destination_path = Path(destination).expanduser()
+        if destination_path.parent == Path(""):
+            destination_path = Path.cwd() / destination_path
+        if not destination_path.parent.is_dir():
+            raise FileNotFoundError(f"backup directory does not exist: {destination_path.parent}")
+        source_path = Path(self.path).expanduser()
+        if self.path != ":memory:" and source_path.resolve() == destination_path.resolve():
+            raise ValueError("backup destination must be different from the runtime database")
+        if destination_path.exists():
+            raise FileExistsError(f"backup destination already exists: {destination_path}")
+
+        created = False
+        try:
+            destination_path.touch(mode=0o600, exist_ok=False)
+            created = True
+            destination_path.chmod(0o600)
+            with self._lock, closing(sqlite3.connect(destination_path)) as backup_connection:
+                self._connection.backup(backup_connection)
+                integrity = backup_connection.execute("PRAGMA integrity_check").fetchone()
+                if integrity is None or str(integrity[0]) != "ok":
+                    raise RuntimeError("runtime database backup failed its integrity check")
+        except BaseException:
+            if created:
+                destination_path.unlink(missing_ok=True)
+            raise
+        return destination_path
 
     def _refresh_expiry(self, row: sqlite3.Row, *, now: int) -> sqlite3.Row:
         status = RuntimeStatus(str(row["status"]))

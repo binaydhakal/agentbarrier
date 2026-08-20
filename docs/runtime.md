@@ -10,7 +10,8 @@ same approval.
 
 Policy files use strict JSON. Validate generated or hand-written policies against the
 [`runtime-policy-v1` schema](schemas/runtime-policy-v1.schema.json); unknown fields are rejected by
-the runtime as well.
+the runtime as well. See the [runtime API reference](runtime-api.md) for the complete public
+contract and lifecycle.
 
 ## Protect a function
 
@@ -87,6 +88,24 @@ agentbarrier audit --db agentbarrier.db --action-id ACTION_ID --json
 Receipts form one SHA-256 integrity chain covering policy decisions, human decisions, execution,
 and replay. This detects accidental or unauthorized database edits; it is not a substitute for
 filesystem permissions, backups, or external signing.
+
+## Manage the runtime database
+
+Opening a database automatically applies supported forward migrations in one transaction. For an
+explicit deployment step, status check, and consistent backup, use:
+
+```bash
+agentbarrier database status --db agentbarrier.db
+agentbarrier database backup --db agentbarrier.db --output backups/agentbarrier.db
+agentbarrier database migrate --db agentbarrier.db
+```
+
+Back up before upgrading. The backup command refuses to replace an existing path, uses SQLite's
+online backup operation, verifies the finished database, and limits its file mode to the current
+user. Store the backup outside the application host using encryption and access controls appropriate
+for the tool arguments and decisions it contains. Restore by stopping writers, preserving the
+current database, copying the verified backup into place, and running `database status` before
+restarting the application.
 
 ## Unknown outcomes fail closed
 

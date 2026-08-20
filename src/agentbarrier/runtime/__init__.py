@@ -2,6 +2,7 @@
 
 from agentbarrier.runtime.barrier import IdempotencySelector, RuntimeBarrier
 from agentbarrier.runtime.models import (
+    ClaimOutcome,
     ConditionOperator,
     PolicyDecision,
     PolicyEffect,
@@ -17,6 +18,7 @@ from agentbarrier.runtime.store import SQLiteRuntimeStore
 
 __all__ = [
     "ArgumentCondition",
+    "ClaimOutcome",
     "ConditionOperator",
     "IdempotencySelector",
     "PolicyDecision",

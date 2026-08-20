@@ -32,6 +32,8 @@ Runtime enforcement is being developed on `main` for 0.4.0. It applies determini
 and approval rules directly around synchronous and asynchronous Python tool functions, persists
 exact approval state in SQLite, prevents duplicate execution, and emits integrity-linked audit
 receipts. See the [runtime guide](https://github.com/binaydhakal/agentbarrier/blob/main/docs/runtime.md).
+The [runtime API reference](https://github.com/binaydhakal/agentbarrier/blob/main/docs/runtime-api.md)
+documents the public classes, lifecycle, and failure contract.
 
 > **Status:** early development. The public adapter contract is usable, but compatibility should
 > be pinned until the first stable release.

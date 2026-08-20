@@ -315,3 +315,44 @@ def test_runtime_cli_requires_reconciliation_result(tmp_path: Path) -> None:
             ]
         )
     assert exc.value.code == 2
+
+
+def test_runtime_database_cli_reports_migrates_and_backs_up(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path = tmp_path / "runtime.db"
+    _pending_runtime_action(path)
+
+    assert main(["database", "status", "--db", str(path), "--json"]) == 0
+    status = json.loads(capsys.readouterr().out)
+    assert status == {
+        "actions": 1,
+        "receipt_chain_valid": True,
+        "receipts": 1,
+        "schema_version": "2",
+    }
+
+    assert main(["database", "migrate", "--db", str(path)]) == 0
+    assert "schema version 2" in capsys.readouterr().out
+
+    backup = tmp_path / "runtime-backup.db"
+    assert main(["database", "backup", "--db", str(path), "--output", str(backup)]) == 0
+    assert str(backup) in capsys.readouterr().out
+    with SQLiteRuntimeStore(backup) as store:
+        assert len(store.list_actions()) == 1
+        assert store.verify_receipt_chain()
+
+    with pytest.raises(SystemExit) as exc:
+        main(["database", "backup", "--db", str(path), "--output", str(backup)])
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("command", ["status", "backup"])
+def test_runtime_database_cli_rejects_missing_source(tmp_path: Path, command: str) -> None:
+    arguments = ["database", command, "--db", str(tmp_path / "missing.db")]
+    if command == "backup":
+        arguments.extend(["--output", str(tmp_path / "backup.db")])
+    with pytest.raises(SystemExit) as exc:
+        main(arguments)
+    assert exc.value.code == 2
+    assert not (tmp_path / "missing.db").exists()

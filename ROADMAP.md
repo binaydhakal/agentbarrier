@@ -26,12 +26,14 @@ Track the complete release in the [`0.3.0` milestone](https://github.com/binaydh
 
 ## 0.4.0 — runtime enforcement
 
-- [ ] Add a deterministic runtime policy engine with allow, deny, and approval decisions.
-- [ ] Protect synchronous and asynchronous Python tool functions at their effect boundary.
-- [ ] Persist approval requests and execution state in a concurrency-safe SQLite store.
-- [ ] Bind approvals and idempotency keys to the exact reviewed tool arguments and policy version.
-- [ ] Add CLI approval, rejection, inspection, and audit-receipt workflows.
-- [ ] Document and test fail-closed recovery for interrupted or ambiguous executions.
+Track the complete release in the [`0.4.0` milestone](https://github.com/binaydhakal/agentbarrier/milestone/2).
+
+- [x] Add a deterministic runtime policy engine with allow, deny, and approval decisions.
+- [x] Protect synchronous and asynchronous Python tool functions at their effect boundary.
+- [x] Persist approval requests and execution state in a concurrency-safe SQLite store.
+- [x] Bind approvals and idempotency keys to the exact reviewed tool arguments and policy version.
+- [x] Add CLI approval, rejection, inspection, reconciliation, and audit-receipt workflows.
+- [x] Document and test fail-closed recovery for interrupted or ambiguous executions.
 
 ## 0.5.0 — protocol and service integrations
 
