@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from fnmatch import fnmatchcase
@@ -137,8 +138,10 @@ class PolicyRule:
             raise ValueError("rule name must not be empty")
         if not self.tool.strip():
             raise ValueError("rule tool pattern must not be empty")
-        if self.approval_ttl_seconds is not None and self.approval_ttl_seconds <= 0:
-            raise ValueError("approval_ttl_seconds must be greater than zero")
+        if self.approval_ttl_seconds is not None and (
+            not math.isfinite(self.approval_ttl_seconds) or self.approval_ttl_seconds <= 0
+        ):
+            raise ValueError("approval_ttl_seconds must be finite and greater than zero")
         if (
             self.effect is not PolicyEffect.REQUIRE_APPROVAL
             and self.approval_ttl_seconds is not None

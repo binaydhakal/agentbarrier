@@ -244,6 +244,10 @@ def test_policy_rejects_invalid_rule_configuration() -> None:
         PolicyRule("allow", PolicyEffect.ALLOW, approval_ttl_seconds=1)
     with pytest.raises(ValueError, match="greater"):
         PolicyRule("review", PolicyEffect.REQUIRE_APPROVAL, approval_ttl_seconds=0)
+    with pytest.raises(ValueError, match="finite"):
+        PolicyRule("review", PolicyEffect.REQUIRE_APPROVAL, approval_ttl_seconds=float("nan"))
+    with pytest.raises(ValueError, match="finite"):
+        PolicyRule("review", PolicyEffect.REQUIRE_APPROVAL, approval_ttl_seconds=float("inf"))
     with pytest.raises(ValueError, match="path"):
         ArgumentCondition("", ConditionOperator.EQ, 1)
     with pytest.raises(TypeError, match="boolean"):

@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/binaydhakal/agentbarrier/blob/main/docs/schemas/runtime-policy-v1.schema.json",
+  "title": "AgentBarrier runtime policy v1",
+  "description": "An ordered, fail-closed policy for consequential tool calls.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "rules"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "default": {
+      "enum": ["allow", "deny", "require_approval"],
+      "default": "deny"
+    },
+    "rules": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/rule"}
+    }
+  },
+  "$defs": {
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "effect"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "effect": {
+          "enum": ["allow", "deny", "require_approval"]
+        },
+        "tool": {
+          "type": "string",
+          "minLength": 1,
+          "default": "*"
+        },
+        "approval_ttl_seconds": {
+          "type": ["number", "null"],
+          "exclusiveMinimum": 0
+        },
+        "conditions": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/condition"},
+          "default": []
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["approval_ttl_seconds"],
+            "properties": {
+              "approval_ttl_seconds": {"type": "number"}
+            }
+          },
+          "then": {
+            "properties": {
+              "effect": {"const": "require_approval"}
+            }
+          }
+        }
+      ]
+    },
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "operator"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operator": {
+          "enum": [
+            "exists",
+            "eq",
+            "ne",
+            "lt",
+            "le",
+            "gt",
+            "ge",
+            "in",
+            "not_in",
+            "contains",
+            "starts_with",
+            "ends_with"
+          ]
+        },
+        "value": {
+          "$ref": "#/$defs/jsonValue",
+          "default": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"operator": {"const": "exists"}},
+            "required": ["operator"]
+          },
+          "then": {
+            "properties": {"value": {"type": "boolean"}}
+          }
+        },
+        {
+          "if": {
+            "properties": {"operator": {"enum": ["in", "not_in"]}},
+            "required": ["operator"]
+          },
+          "then": {
+            "required": ["value"],
+            "properties": {"value": {"type": "array"}}
+          }
+        },
+        {
+          "if": {
+            "properties": {"operator": {"enum": ["lt", "le", "gt", "ge"]}},
+            "required": ["operator"]
+          },
+          "then": {
+            "required": ["value"],
+            "properties": {"value": {"type": ["number", "string"]}}
+          }
+        },
+        {
+          "if": {
+            "properties": {"operator": {"enum": ["starts_with", "ends_with"]}},
+            "required": ["operator"]
+          },
+          "then": {
+            "required": ["value"],
+            "properties": {"value": {"type": "string"}}
+          }
+        }
+      ]
+    },
+    "jsonValue": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "boolean"},
+        {"type": "number"},
+        {"type": "string"},
+        {
+          "type": "array",
+          "items": {"$ref": "#/$defs/jsonValue"}
+        },
+        {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/jsonValue"}
+        }
+      ]
+    }
+  }
+}

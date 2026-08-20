@@ -386,6 +386,12 @@ def test_store_rejects_unknown_schema_version(tmp_path: Path) -> None:
         SQLiteRuntimeStore(path)
 
 
+@pytest.mark.parametrize("lease", [0, -1, float("nan"), float("inf"), 1e-12])
+def test_store_rejects_invalid_execution_lease(tmp_path: Path, lease: float) -> None:
+    with pytest.raises(ValueError, match="execution_lease_seconds"):
+        SQLiteRuntimeStore(tmp_path / "runtime.db", execution_lease_seconds=lease)
+
+
 def test_store_migrates_v1_and_fails_closed_for_legacy_execution(tmp_path: Path) -> None:
     path = tmp_path / "legacy.db"
     connection = sqlite3.connect(path)

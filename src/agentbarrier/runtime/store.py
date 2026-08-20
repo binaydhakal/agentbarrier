@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import sqlite3
 import threading
 import time
@@ -52,11 +53,13 @@ class SQLiteRuntimeStore:
         clock_ns: Callable[[], int] = time.time_ns,
         execution_lease_seconds: float = 300,
     ) -> None:
-        if execution_lease_seconds <= 0:
-            raise ValueError("execution_lease_seconds must be greater than zero")
+        if not math.isfinite(execution_lease_seconds) or execution_lease_seconds <= 0:
+            raise ValueError("execution_lease_seconds must be finite and greater than zero")
         self.path = str(path)
         self._clock_ns = clock_ns
         self._execution_lease_ns = int(execution_lease_seconds * 1_000_000_000)
+        if self._execution_lease_ns < 1:
+            raise ValueError("execution_lease_seconds must be at least one nanosecond")
         self._lock = threading.RLock()
         self._connection = sqlite3.connect(
             self.path,

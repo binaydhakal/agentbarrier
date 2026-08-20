@@ -8,6 +8,10 @@ effect boundary. An ordered policy allows, denies, or pauses the exact call for 
 stores the action outside model-visible state and atomically prevents two workers from claiming the
 same approval.
 
+Policy files use strict JSON. Validate generated or hand-written policies against the
+[`runtime-policy-v1` schema](schemas/runtime-policy-v1.schema.json); unknown fields are rejected by
+the runtime as well.
+
 ## Protect a function
 
 ```python
