@@ -25,6 +25,8 @@ All notable changes to this project will be documented in this file. The format 
 
 - Console failures now include the finding title, expected behavior, observed evidence, and
   remediation guidance.
+- Package metadata now covers agent-safety, human-in-the-loop, tool-calling, guardrail, and
+  framework-discovery searches.
 
 ## [0.1.0] - 2026-08-19
 

@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "agentbarrier"
 version = "0.2.0"
-description = "Deterministic control-plane safety tests for AI agents"
+description = "Deterministic approval and side-effect safety tests for AI agents"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
@@ -15,10 +15,18 @@ authors = [
 keywords = [
   "ai",
   "agents",
+  "agentic-ai",
+  "llm",
   "testing",
+  "pytest",
   "safety",
+  "agent-safety",
   "approval",
+  "human-in-the-loop",
+  "tool-calling",
+  "guardrails",
   "idempotency",
+  "cancellation",
 ]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -26,6 +34,8 @@ classifiers = [
   "Intended Audience :: Developers",
   "License :: OSI Approved :: Apache Software License",
   "Operating System :: OS Independent",
+  "Topic :: Security",
+  "Topic :: Software Development :: Quality Assurance",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
@@ -64,6 +74,8 @@ Documentation = "https://github.com/binaydhakal/agentbarrier#readme"
 Repository = "https://github.com/binaydhakal/agentbarrier"
 Issues = "https://github.com/binaydhakal/agentbarrier/issues"
 Changelog = "https://github.com/binaydhakal/agentbarrier/blob/main/CHANGELOG.md"
+Compatibility = "https://github.com/binaydhakal/agentbarrier/blob/main/docs/compatibility.md"
+"CI Guide" = "https://github.com/binaydhakal/agentbarrier/blob/main/docs/ci.md"
 
 [project.scripts]
 agentbarrier = "agentbarrier.cli:main"
