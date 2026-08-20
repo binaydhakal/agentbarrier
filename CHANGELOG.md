@@ -10,6 +10,8 @@ All notable changes to this project will be documented in this file. The format 
 
 - Explicit `run-wide` and `per-action` approval-barrier profiles across the Python API, CLI,
   pytest fixture, console output, JSON, JUnit, and SARIF evidence.
+- Deterministic, schema-validated compatibility evidence generated from both approval profiles,
+  checked against the documentation table, and uploaded for each Python CI job.
 
 ## [0.2.1] - 2026-08-19
 

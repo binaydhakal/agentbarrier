@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/binaydhakal/agentbarrier/main/docs/schemas/compatibility-v1.schema.json",
+  "title": "AgentBarrier compatibility evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "generator", "profiles", "adapters"],
+  "properties": {
+    "$schema": {"type": "string", "format": "uri-reference"},
+    "schema_version": {"const": "1.0"},
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "python_implementation", "python_version"],
+      "properties": {
+        "name": {"const": "agentbarrier"},
+        "version": {"type": "string", "minLength": 1},
+        "python_implementation": {"type": "string", "minLength": 1},
+        "python_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+$"}
+      }
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"enum": ["run-wide", "per-action"]}
+    },
+    "adapters": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/adapter"}
+    }
+  },
+  "$defs": {
+    "distribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "version": {"type": ["string", "null"]}
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["passed", "failed", "errors", "skipped"],
+      "properties": {
+        "passed": {"type": "integer", "minimum": 0},
+        "failed": {"type": "integer", "minimum": 0},
+        "errors": {"type": "integer", "minimum": 0},
+        "skipped": {"type": "integer", "minimum": 0}
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenario",
+        "capability",
+        "status",
+        "finding_code",
+        "finding_title",
+        "detail"
+      ],
+      "properties": {
+        "scenario": {"type": "string", "minLength": 1},
+        "capability": {"type": "string", "minLength": 1},
+        "status": {"enum": ["passed", "failed", "skipped", "error"]},
+        "finding_code": {"type": ["string", "null"]},
+        "finding_title": {"type": ["string", "null"]},
+        "detail": {"type": ["string", "null"]}
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["passed", "summary", "results"],
+      "properties": {
+        "passed": {"type": "boolean"},
+        "summary": {"$ref": "#/$defs/summary"},
+        "results": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/result"}
+        }
+      }
+    },
+    "adapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "label",
+        "target",
+        "python_requirement",
+        "distribution",
+        "available",
+        "unavailable_reason",
+        "adapter_name",
+        "capabilities",
+        "profiles"
+      ],
+      "properties": {
+        "key": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 1},
+        "target": {"type": "string", "minLength": 1},
+        "python_requirement": {"type": "string", "minLength": 1},
+        "distribution": {"$ref": "#/$defs/distribution"},
+        "available": {"type": "boolean"},
+        "unavailable_reason": {"type": ["string", "null"]},
+        "adapter_name": {"type": ["string", "null"]},
+        "capabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "profiles": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/profile"},
+          "propertyNames": {"enum": ["run-wide", "per-action"]}
+        }
+      }
+    }
+  }
+}

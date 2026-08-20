@@ -41,6 +41,25 @@ jobs:
         run: uv run ruff format --check .
       - if: matrix.python-version == '3.11'
         run: uv run mypy src
+      - name: Generate compatibility evidence
+        env:
+          MATRIX_PYTHON: ${{ matrix.python-version }}
+        run: >-
+          uv run agentbarrier compatibility
+          --json "build/compatibility/python-${MATRIX_PYTHON}.json"
+      - name: Check canonical compatibility evidence
+        if: matrix.python-version == '3.11'
+        run: >-
+          uv run agentbarrier compatibility
+          --json docs/compatibility.json
+          --markdown docs/compatibility.md
+          --check
+          --strict-missing
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: compatibility-python-${{ matrix.python-version }}
+          path: build/compatibility/
+          if-no-files-found: error
 
   package:
     name: Build package

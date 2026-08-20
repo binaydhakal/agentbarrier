@@ -54,6 +54,7 @@ google-adk = ["google-adk>=2.7,<3"]
 autogen = ["autogen-core>=0.7.5,<0.8"]
 test = [
   "build>=1.2.2",
+  "jsonschema>=4.26",
   "mypy>=1.15",
   "pytest>=8.3",
   "pytest-cov>=6.0",

@@ -1,0 +1,1248 @@
+{
+  "$schema": "https://raw.githubusercontent.com/binaydhakal/agentbarrier/main/docs/schemas/compatibility-v1.schema.json",
+  "adapters": [
+    {
+      "adapter_name": "reference",
+      "available": true,
+      "capabilities": [
+        "approval",
+        "argument_binding",
+        "audit_receipts",
+        "cancellation",
+        "delegation",
+        "outcome_ambiguity",
+        "parallel_barrier",
+        "rejection",
+        "replay",
+        "timeout"
+      ],
+      "distribution": {
+        "name": "agentbarrier",
+        "version": "0.3.0.dev0"
+      },
+      "key": "reference",
+      "label": "Reference",
+      "profiles": {
+        "per-action": {
+          "passed": true,
+          "results": [
+            {
+              "capability": "approval",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "approval_hold",
+              "status": "passed"
+            },
+            {
+              "capability": "rejection",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "rejection",
+              "status": "passed"
+            },
+            {
+              "capability": "argument_binding",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "argument_binding",
+              "status": "passed"
+            },
+            {
+              "capability": "replay",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "replay",
+              "status": "passed"
+            },
+            {
+              "capability": "outcome_ambiguity",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_ambiguity",
+              "status": "passed"
+            },
+            {
+              "capability": "cancellation",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "cancellation",
+              "status": "passed"
+            },
+            {
+              "capability": "timeout",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "timeout",
+              "status": "passed"
+            },
+            {
+              "capability": "parallel_barrier",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "parallel_barrier",
+              "status": "passed"
+            },
+            {
+              "capability": "delegation",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "delegation",
+              "status": "passed"
+            },
+            {
+              "capability": "audit_receipts",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "audit_receipts",
+              "status": "passed"
+            }
+          ],
+          "summary": {
+            "errors": 0,
+            "failed": 0,
+            "passed": 10,
+            "skipped": 0
+          }
+        },
+        "run-wide": {
+          "passed": true,
+          "results": [
+            {
+              "capability": "approval",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "approval_hold",
+              "status": "passed"
+            },
+            {
+              "capability": "rejection",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "rejection",
+              "status": "passed"
+            },
+            {
+              "capability": "argument_binding",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "argument_binding",
+              "status": "passed"
+            },
+            {
+              "capability": "replay",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "replay",
+              "status": "passed"
+            },
+            {
+              "capability": "outcome_ambiguity",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_ambiguity",
+              "status": "passed"
+            },
+            {
+              "capability": "cancellation",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "cancellation",
+              "status": "passed"
+            },
+            {
+              "capability": "timeout",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "timeout",
+              "status": "passed"
+            },
+            {
+              "capability": "parallel_barrier",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "parallel_barrier",
+              "status": "passed"
+            },
+            {
+              "capability": "delegation",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "delegation",
+              "status": "passed"
+            },
+            {
+              "capability": "audit_receipts",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "audit_receipts",
+              "status": "passed"
+            }
+          ],
+          "summary": {
+            "errors": 0,
+            "failed": 0,
+            "passed": 10,
+            "skipped": 0
+          }
+        }
+      },
+      "python_requirement": ">=3.10",
+      "target": "agentbarrier.adapters.reference:ReferenceAdapter",
+      "unavailable_reason": null
+    },
+    {
+      "adapter_name": "openai-agents/0.22.0",
+      "available": true,
+      "capabilities": [
+        "approval",
+        "cancellation",
+        "parallel_barrier",
+        "rejection",
+        "timeout"
+      ],
+      "distribution": {
+        "name": "openai-agents",
+        "version": "0.22.0"
+      },
+      "key": "openai-agents",
+      "label": "OpenAI Agents Python",
+      "profiles": {
+        "per-action": {
+          "passed": true,
+          "results": [
+            {
+              "capability": "approval",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "approval_hold",
+              "status": "passed"
+            },
+            {
+              "capability": "rejection",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "rejection",
+              "status": "passed"
+            },
+            {
+              "capability": "argument_binding",
+              "detail": "adapter does not declare 'argument_binding'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "argument_binding",
+              "status": "skipped"
+            },
+            {
+              "capability": "replay",
+              "detail": "adapter does not declare 'replay'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "replay",
+              "status": "skipped"
+            },
+            {
+              "capability": "outcome_ambiguity",
+              "detail": "adapter does not declare 'outcome_ambiguity'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_ambiguity",
+              "status": "skipped"
+            },
+            {
+              "capability": "cancellation",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "cancellation",
+              "status": "passed"
+            },
+            {
+              "capability": "timeout",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "timeout",
+              "status": "passed"
+            },
+            {
+              "capability": "parallel_barrier",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "parallel_barrier",
+              "status": "passed"
+            },
+            {
+              "capability": "delegation",
+              "detail": "adapter does not declare 'delegation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "delegation",
+              "status": "skipped"
+            },
+            {
+              "capability": "audit_receipts",
+              "detail": "adapter does not declare 'audit_receipts'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "audit_receipts",
+              "status": "skipped"
+            }
+          ],
+          "summary": {
+            "errors": 0,
+            "failed": 0,
+            "passed": 5,
+            "skipped": 5
+          }
+        },
+        "run-wide": {
+          "passed": false,
+          "results": [
+            {
+              "capability": "approval",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "approval_hold",
+              "status": "passed"
+            },
+            {
+              "capability": "rejection",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "rejection",
+              "status": "passed"
+            },
+            {
+              "capability": "argument_binding",
+              "detail": "adapter does not declare 'argument_binding'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "argument_binding",
+              "status": "skipped"
+            },
+            {
+              "capability": "replay",
+              "detail": "adapter does not declare 'replay'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "replay",
+              "status": "skipped"
+            },
+            {
+              "capability": "outcome_ambiguity",
+              "detail": "adapter does not declare 'outcome_ambiguity'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_ambiguity",
+              "status": "skipped"
+            },
+            {
+              "capability": "cancellation",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "cancellation",
+              "status": "passed"
+            },
+            {
+              "capability": "timeout",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "timeout",
+              "status": "passed"
+            },
+            {
+              "capability": "parallel_barrier",
+              "detail": null,
+              "finding_code": "AB010",
+              "finding_title": "Sibling effect bypassed a pending approval",
+              "scenario": "parallel_barrier",
+              "status": "failed"
+            },
+            {
+              "capability": "delegation",
+              "detail": "adapter does not declare 'delegation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "delegation",
+              "status": "skipped"
+            },
+            {
+              "capability": "audit_receipts",
+              "detail": "adapter does not declare 'audit_receipts'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "audit_receipts",
+              "status": "skipped"
+            }
+          ],
+          "summary": {
+            "errors": 0,
+            "failed": 1,
+            "passed": 4,
+            "skipped": 5
+          }
+        }
+      },
+      "python_requirement": ">=3.10",
+      "target": "agentbarrier.adapters.openai_agents:OpenAIAgentsAdapter",
+      "unavailable_reason": null
+    },
+    {
+      "adapter_name": "langgraph/1.2.11",
+      "available": true,
+      "capabilities": [
+        "approval",
+        "argument_binding",
+        "cancellation",
+        "parallel_barrier",
+        "rejection",
+        "timeout"
+      ],
+      "distribution": {
+        "name": "langgraph",
+        "version": "1.2.11"
+      },
+      "key": "langgraph",
+      "label": "LangGraph (Python 3.11+)",
+      "profiles": {
+        "per-action": {
+          "passed": true,
+          "results": [
+            {
+              "capability": "approval",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "approval_hold",
+              "status": "passed"
+            },
+            {
+              "capability": "rejection",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "rejection",
+              "status": "passed"
+            },
+            {
+              "capability": "argument_binding",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "argument_binding",
+              "status": "passed"
+            },
+            {
+              "capability": "replay",
+              "detail": "adapter does not declare 'replay'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "replay",
+              "status": "skipped"
+            },
+            {
+              "capability": "outcome_ambiguity",
+              "detail": "adapter does not declare 'outcome_ambiguity'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_ambiguity",
+              "status": "skipped"
+            },
+            {
+              "capability": "cancellation",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "cancellation",
+              "status": "passed"
+            },
+            {
+              "capability": "timeout",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "timeout",
+              "status": "passed"
+            },
+            {
+              "capability": "parallel_barrier",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "parallel_barrier",
+              "status": "passed"
+            },
+            {
+              "capability": "delegation",
+              "detail": "adapter does not declare 'delegation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "delegation",
+              "status": "skipped"
+            },
+            {
+              "capability": "audit_receipts",
+              "detail": "adapter does not declare 'audit_receipts'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "audit_receipts",
+              "status": "skipped"
+            }
+          ],
+          "summary": {
+            "errors": 0,
+            "failed": 0,
+            "passed": 6,
+            "skipped": 4
+          }
+        },
+        "run-wide": {
+          "passed": false,
+          "results": [
+            {
+              "capability": "approval",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "approval_hold",
+              "status": "passed"
+            },
+            {
+              "capability": "rejection",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "rejection",
+              "status": "passed"
+            },
+            {
+              "capability": "argument_binding",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "argument_binding",
+              "status": "passed"
+            },
+            {
+              "capability": "replay",
+              "detail": "adapter does not declare 'replay'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "replay",
+              "status": "skipped"
+            },
+            {
+              "capability": "outcome_ambiguity",
+              "detail": "adapter does not declare 'outcome_ambiguity'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_ambiguity",
+              "status": "skipped"
+            },
+            {
+              "capability": "cancellation",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "cancellation",
+              "status": "passed"
+            },
+            {
+              "capability": "timeout",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "timeout",
+              "status": "passed"
+            },
+            {
+              "capability": "parallel_barrier",
+              "detail": null,
+              "finding_code": "AB010",
+              "finding_title": "Sibling effect bypassed a pending approval",
+              "scenario": "parallel_barrier",
+              "status": "failed"
+            },
+            {
+              "capability": "delegation",
+              "detail": "adapter does not declare 'delegation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "delegation",
+              "status": "skipped"
+            },
+            {
+              "capability": "audit_receipts",
+              "detail": "adapter does not declare 'audit_receipts'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "audit_receipts",
+              "status": "skipped"
+            }
+          ],
+          "summary": {
+            "errors": 0,
+            "failed": 1,
+            "passed": 5,
+            "skipped": 4
+          }
+        }
+      },
+      "python_requirement": ">=3.11",
+      "target": "agentbarrier.adapters.langgraph:LangGraphAdapter",
+      "unavailable_reason": null
+    },
+    {
+      "adapter_name": "pydantic-ai/2.32.0",
+      "available": true,
+      "capabilities": [
+        "approval",
+        "argument_binding",
+        "cancellation",
+        "parallel_barrier",
+        "rejection",
+        "timeout"
+      ],
+      "distribution": {
+        "name": "pydantic-ai-slim",
+        "version": "2.32.0"
+      },
+      "key": "pydantic-ai",
+      "label": "PydanticAI",
+      "profiles": {
+        "per-action": {
+          "passed": true,
+          "results": [
+            {
+              "capability": "approval",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "approval_hold",
+              "status": "passed"
+            },
+            {
+              "capability": "rejection",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "rejection",
+              "status": "passed"
+            },
+            {
+              "capability": "argument_binding",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "argument_binding",
+              "status": "passed"
+            },
+            {
+              "capability": "replay",
+              "detail": "adapter does not declare 'replay'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "replay",
+              "status": "skipped"
+            },
+            {
+              "capability": "outcome_ambiguity",
+              "detail": "adapter does not declare 'outcome_ambiguity'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_ambiguity",
+              "status": "skipped"
+            },
+            {
+              "capability": "cancellation",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "cancellation",
+              "status": "passed"
+            },
+            {
+              "capability": "timeout",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "timeout",
+              "status": "passed"
+            },
+            {
+              "capability": "parallel_barrier",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "parallel_barrier",
+              "status": "passed"
+            },
+            {
+              "capability": "delegation",
+              "detail": "adapter does not declare 'delegation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "delegation",
+              "status": "skipped"
+            },
+            {
+              "capability": "audit_receipts",
+              "detail": "adapter does not declare 'audit_receipts'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "audit_receipts",
+              "status": "skipped"
+            }
+          ],
+          "summary": {
+            "errors": 0,
+            "failed": 0,
+            "passed": 6,
+            "skipped": 4
+          }
+        },
+        "run-wide": {
+          "passed": false,
+          "results": [
+            {
+              "capability": "approval",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "approval_hold",
+              "status": "passed"
+            },
+            {
+              "capability": "rejection",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "rejection",
+              "status": "passed"
+            },
+            {
+              "capability": "argument_binding",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "argument_binding",
+              "status": "passed"
+            },
+            {
+              "capability": "replay",
+              "detail": "adapter does not declare 'replay'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "replay",
+              "status": "skipped"
+            },
+            {
+              "capability": "outcome_ambiguity",
+              "detail": "adapter does not declare 'outcome_ambiguity'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_ambiguity",
+              "status": "skipped"
+            },
+            {
+              "capability": "cancellation",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "cancellation",
+              "status": "passed"
+            },
+            {
+              "capability": "timeout",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "timeout",
+              "status": "passed"
+            },
+            {
+              "capability": "parallel_barrier",
+              "detail": null,
+              "finding_code": "AB010",
+              "finding_title": "Sibling effect bypassed a pending approval",
+              "scenario": "parallel_barrier",
+              "status": "failed"
+            },
+            {
+              "capability": "delegation",
+              "detail": "adapter does not declare 'delegation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "delegation",
+              "status": "skipped"
+            },
+            {
+              "capability": "audit_receipts",
+              "detail": "adapter does not declare 'audit_receipts'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "audit_receipts",
+              "status": "skipped"
+            }
+          ],
+          "summary": {
+            "errors": 0,
+            "failed": 1,
+            "passed": 5,
+            "skipped": 4
+          }
+        }
+      },
+      "python_requirement": ">=3.10",
+      "target": "agentbarrier.adapters.pydantic_ai:PydanticAIAdapter",
+      "unavailable_reason": null
+    },
+    {
+      "adapter_name": "google-adk/2.7.1",
+      "available": true,
+      "capabilities": [
+        "approval",
+        "cancellation",
+        "parallel_barrier",
+        "rejection",
+        "timeout"
+      ],
+      "distribution": {
+        "name": "google-adk",
+        "version": "2.7.1"
+      },
+      "key": "google-adk",
+      "label": "Google ADK",
+      "profiles": {
+        "per-action": {
+          "passed": true,
+          "results": [
+            {
+              "capability": "approval",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "approval_hold",
+              "status": "passed"
+            },
+            {
+              "capability": "rejection",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "rejection",
+              "status": "passed"
+            },
+            {
+              "capability": "argument_binding",
+              "detail": "adapter does not declare 'argument_binding'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "argument_binding",
+              "status": "skipped"
+            },
+            {
+              "capability": "replay",
+              "detail": "adapter does not declare 'replay'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "replay",
+              "status": "skipped"
+            },
+            {
+              "capability": "outcome_ambiguity",
+              "detail": "adapter does not declare 'outcome_ambiguity'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_ambiguity",
+              "status": "skipped"
+            },
+            {
+              "capability": "cancellation",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "cancellation",
+              "status": "passed"
+            },
+            {
+              "capability": "timeout",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "timeout",
+              "status": "passed"
+            },
+            {
+              "capability": "parallel_barrier",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "parallel_barrier",
+              "status": "passed"
+            },
+            {
+              "capability": "delegation",
+              "detail": "adapter does not declare 'delegation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "delegation",
+              "status": "skipped"
+            },
+            {
+              "capability": "audit_receipts",
+              "detail": "adapter does not declare 'audit_receipts'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "audit_receipts",
+              "status": "skipped"
+            }
+          ],
+          "summary": {
+            "errors": 0,
+            "failed": 0,
+            "passed": 5,
+            "skipped": 5
+          }
+        },
+        "run-wide": {
+          "passed": false,
+          "results": [
+            {
+              "capability": "approval",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "approval_hold",
+              "status": "passed"
+            },
+            {
+              "capability": "rejection",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "rejection",
+              "status": "passed"
+            },
+            {
+              "capability": "argument_binding",
+              "detail": "adapter does not declare 'argument_binding'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "argument_binding",
+              "status": "skipped"
+            },
+            {
+              "capability": "replay",
+              "detail": "adapter does not declare 'replay'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "replay",
+              "status": "skipped"
+            },
+            {
+              "capability": "outcome_ambiguity",
+              "detail": "adapter does not declare 'outcome_ambiguity'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_ambiguity",
+              "status": "skipped"
+            },
+            {
+              "capability": "cancellation",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "cancellation",
+              "status": "passed"
+            },
+            {
+              "capability": "timeout",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "timeout",
+              "status": "passed"
+            },
+            {
+              "capability": "parallel_barrier",
+              "detail": null,
+              "finding_code": "AB010",
+              "finding_title": "Sibling effect bypassed a pending approval",
+              "scenario": "parallel_barrier",
+              "status": "failed"
+            },
+            {
+              "capability": "delegation",
+              "detail": "adapter does not declare 'delegation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "delegation",
+              "status": "skipped"
+            },
+            {
+              "capability": "audit_receipts",
+              "detail": "adapter does not declare 'audit_receipts'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "audit_receipts",
+              "status": "skipped"
+            }
+          ],
+          "summary": {
+            "errors": 0,
+            "failed": 1,
+            "passed": 4,
+            "skipped": 5
+          }
+        }
+      },
+      "python_requirement": ">=3.10",
+      "target": "agentbarrier.adapters.google_adk:GoogleADKAdapter",
+      "unavailable_reason": null
+    },
+    {
+      "adapter_name": "autogen-core/0.7.5",
+      "available": true,
+      "capabilities": [
+        "approval",
+        "argument_binding",
+        "cancellation",
+        "parallel_barrier",
+        "rejection",
+        "timeout"
+      ],
+      "distribution": {
+        "name": "autogen-core",
+        "version": "0.7.5"
+      },
+      "key": "autogen",
+      "label": "AutoGen Core (single-threaded runtime)",
+      "profiles": {
+        "per-action": {
+          "passed": true,
+          "results": [
+            {
+              "capability": "approval",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "approval_hold",
+              "status": "passed"
+            },
+            {
+              "capability": "rejection",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "rejection",
+              "status": "passed"
+            },
+            {
+              "capability": "argument_binding",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "argument_binding",
+              "status": "passed"
+            },
+            {
+              "capability": "replay",
+              "detail": "adapter does not declare 'replay'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "replay",
+              "status": "skipped"
+            },
+            {
+              "capability": "outcome_ambiguity",
+              "detail": "adapter does not declare 'outcome_ambiguity'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_ambiguity",
+              "status": "skipped"
+            },
+            {
+              "capability": "cancellation",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "cancellation",
+              "status": "passed"
+            },
+            {
+              "capability": "timeout",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "timeout",
+              "status": "passed"
+            },
+            {
+              "capability": "parallel_barrier",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "parallel_barrier",
+              "status": "passed"
+            },
+            {
+              "capability": "delegation",
+              "detail": "adapter does not declare 'delegation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "delegation",
+              "status": "skipped"
+            },
+            {
+              "capability": "audit_receipts",
+              "detail": "adapter does not declare 'audit_receipts'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "audit_receipts",
+              "status": "skipped"
+            }
+          ],
+          "summary": {
+            "errors": 0,
+            "failed": 0,
+            "passed": 6,
+            "skipped": 4
+          }
+        },
+        "run-wide": {
+          "passed": true,
+          "results": [
+            {
+              "capability": "approval",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "approval_hold",
+              "status": "passed"
+            },
+            {
+              "capability": "rejection",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "rejection",
+              "status": "passed"
+            },
+            {
+              "capability": "argument_binding",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "argument_binding",
+              "status": "passed"
+            },
+            {
+              "capability": "replay",
+              "detail": "adapter does not declare 'replay'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "replay",
+              "status": "skipped"
+            },
+            {
+              "capability": "outcome_ambiguity",
+              "detail": "adapter does not declare 'outcome_ambiguity'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_ambiguity",
+              "status": "skipped"
+            },
+            {
+              "capability": "cancellation",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "cancellation",
+              "status": "passed"
+            },
+            {
+              "capability": "timeout",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "timeout",
+              "status": "passed"
+            },
+            {
+              "capability": "parallel_barrier",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "parallel_barrier",
+              "status": "passed"
+            },
+            {
+              "capability": "delegation",
+              "detail": "adapter does not declare 'delegation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "delegation",
+              "status": "skipped"
+            },
+            {
+              "capability": "audit_receipts",
+              "detail": "adapter does not declare 'audit_receipts'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "audit_receipts",
+              "status": "skipped"
+            }
+          ],
+          "summary": {
+            "errors": 0,
+            "failed": 0,
+            "passed": 6,
+            "skipped": 4
+          }
+        }
+      },
+      "python_requirement": ">=3.10",
+      "target": "agentbarrier.adapters.autogen:AutoGenAdapter",
+      "unavailable_reason": null
+    }
+  ],
+  "generator": {
+    "name": "agentbarrier",
+    "python_implementation": "CPython",
+    "python_version": "3.11",
+    "version": "0.3.0.dev0"
+  },
+  "profiles": [
+    "run-wide",
+    "per-action"
+  ],
+  "schema_version": "1.0"
+}

@@ -98,6 +98,38 @@ def test_cli_selects_and_reports_approval_profile(
     assert json.loads(json_path.read_text())["approval_profile"] == "per-action"
 
 
+def test_cli_generates_and_checks_compatibility_evidence(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    json_path = tmp_path / "compatibility.json"
+    markdown_path = tmp_path / "compatibility.md"
+    markdown_path.write_text(
+        "# Matrix\n\n<!-- agentbarrier:compatibility:start -->\n"
+        "stale\n<!-- agentbarrier:compatibility:end -->\n"
+    )
+    arguments = [
+        "compatibility",
+        "--adapter",
+        "reference",
+        "--json",
+        str(json_path),
+        "--markdown",
+        str(markdown_path),
+        "--strict-missing",
+    ]
+
+    assert main(arguments) == 0
+    assert main([*arguments, "--check"]) == 0
+    evidence = json.loads(json_path.read_text())
+    assert evidence["adapters"][0]["key"] == "reference"
+    assert evidence["profiles"] == ["run-wide", "per-action"]
+
+    json_path.write_text("{}\n")
+    assert main([*arguments, "--check"]) == 1
+    assert "compatibility outputs are out of date" in capsys.readouterr().err
+    assert json_path.read_text() == "{}\n"
+
+
 @pytest.mark.parametrize(
     "target",
     [

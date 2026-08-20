@@ -38,6 +38,7 @@ pydantic-ai = [
 ]
 test = [
     { name = "build" },
+    { name = "jsonschema" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -52,6 +53,7 @@ requires-dist = [
     { name = "build", marker = "extra == 'test'", specifier = ">=1.2.2" },
     { name = "google-adk", marker = "extra == 'all'", specifier = ">=2.7,<3" },
     { name = "google-adk", marker = "extra == 'google-adk'", specifier = ">=2.7,<3" },
+    { name = "jsonschema", marker = "extra == 'test'", specifier = ">=4.26" },
     { name = "langgraph", marker = "python_full_version >= '3.11' and extra == 'all'", specifier = ">=1.2,<2" },
     { name = "langgraph", marker = "python_full_version >= '3.11' and extra == 'langgraph'", specifier = ">=1.2,<2" },
     { name = "mypy", marker = "extra == 'test'", specifier = ">=1.15" },

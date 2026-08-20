@@ -4,21 +4,23 @@ This matrix records model-free observations from pinned releases. A pass applies
 specific minimal probe described here. A failure is a reproducible difference from AgentBarrier's
 strict guarantee; it is not, by itself, a vulnerability classification.
 
-Last verified: 2026-08-19
-
-The table records the default `run-wide` approval profile. `AB010` means an ungated sibling
-committed while another action was waiting for approval. Those adapters can also be evaluated
-against the narrower `per-action` contract, which still holds the gated effect itself. Every
-adapter version listed below passes its declared parallel capability under `per-action`.
+<!-- agentbarrier:compatibility:start -->
+Canonical evidence: Python 3.11 · AgentBarrier 0.3.0.dev0 · `run-wide` profile
 
 | Adapter | Version | Approval | Rejection | Args | Replay | Unknown | Cancel | Timeout | Parallel | Delegation | Audit |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Reference | 0.2.0 | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Reference | 0.3.0.dev0 | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass |
 | OpenAI Agents Python | 0.22.0 | Pass | Pass | — | — | — | Pass | Pass | **AB010** | — | — |
 | LangGraph (Python 3.11+) | 1.2.11 | Pass | Pass | Pass | — | — | Pass | Pass | **AB010** | — | — |
 | PydanticAI | 2.32.0 | Pass | Pass | Pass | — | — | Pass | Pass | **AB010** | — | — |
 | Google ADK | 2.7.1 | Pass | Pass | — | — | — | Pass | Pass | **AB010** | — | — |
 | AutoGen Core (single-threaded runtime) | 0.7.5 | Pass | Pass | Pass | — | — | Pass | Pass | Pass | — | — |
+<!-- agentbarrier:compatibility:end -->
+
+The table records the default `run-wide` approval profile. `AB010` means an ungated sibling
+committed while another action was waiting for approval. Those adapters can also be evaluated
+against the narrower `per-action` contract, which still holds the gated effect itself. Every
+adapter version listed below passes its declared parallel capability under `per-action`.
 
 An em dash means the adapter does not declare that capability; the result is an explicit skip, not
 a pass.
@@ -41,6 +43,19 @@ pass without breaking AgentBarrier itself.
 ```bash
 uv sync --extra test --extra all
 
+uv run agentbarrier compatibility \
+  --json docs/compatibility.json \
+  --markdown docs/compatibility.md \
+  --strict-missing
+```
+
+The command runs both approval profiles and excludes run identifiers, timestamps, durations, and
+temporary paths from its deterministic JSON. CI repeats it with `--check` so the committed table
+and JSON cannot drift from a fresh probe run. The JSON follows the
+[compatibility evidence schema](schemas/compatibility-v1.schema.json). Framework-specific reports
+remain available when deeper event and receipt evidence is needed:
+
+```bash
 uv run agentbarrier verify \
   agentbarrier.adapters.openai_agents:OpenAIAgentsAdapter \
   --json build/openai-agents.json

@@ -206,6 +206,9 @@ a `RunHandle`. The handle exposes pending actions and lifecycle decisions. See
 
 Current framework results are recorded in
 [the compatibility matrix](https://github.com/binaydhakal/agentbarrier/blob/main/docs/compatibility.md).
+The same probe runs also produce
+[versioned JSON evidence](https://github.com/binaydhakal/agentbarrier/blob/main/docs/compatibility.json)
+that CI checks against the rendered table and uploads for every supported Python version.
 The security boundary and limitations are defined in
 [the threat model](https://github.com/binaydhakal/agentbarrier/blob/main/docs/threat-model.md).
 Planned adapters and release priorities are public in

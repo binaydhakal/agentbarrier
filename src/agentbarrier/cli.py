@@ -13,6 +13,14 @@ from typing import Any, cast
 from agentbarrier import __version__
 from agentbarrier.adapter import AgentAdapter
 from agentbarrier.adapters.reference import ReferenceAdapter
+from agentbarrier.compatibility import (
+    DEFAULT_ADAPTER_SPECS,
+    dump_compatibility_evidence,
+    evidence_has_errors,
+    generate_compatibility_evidence,
+    select_adapter_specs,
+    write_compatibility_outputs,
+)
 from agentbarrier.models import ApprovalBarrierProfile
 from agentbarrier.reporters import render_console, write_json, write_junit, write_sarif
 from agentbarrier.runner import RunnerOptions, SuiteRunner
@@ -35,6 +43,43 @@ def build_parser() -> argparse.ArgumentParser:
 
     self_test = commands.add_parser("self-test", help="verify the safe reference adapter")
     _add_run_options(self_test)
+
+    compatibility = commands.add_parser(
+        "compatibility",
+        help="generate deterministic framework compatibility evidence",
+    )
+    compatibility.add_argument(
+        "--adapter",
+        action="append",
+        choices=[spec.key for spec in DEFAULT_ADAPTER_SPECS],
+        help="include one bundled adapter; repeat to select multiple (default: all)",
+    )
+    compatibility.add_argument(
+        "--profile",
+        action="append",
+        choices=[profile.value for profile in ApprovalBarrierProfile],
+        help="include one approval profile; repeat to select multiple (default: both)",
+    )
+    compatibility.add_argument("--json", metavar="PATH", help="write compatibility JSON")
+    compatibility.add_argument(
+        "--markdown",
+        metavar="PATH",
+        help="update the generated compatibility section in a Markdown file",
+    )
+    compatibility.add_argument(
+        "--check",
+        action="store_true",
+        help="check selected output files for drift instead of updating them",
+    )
+    compatibility.add_argument(
+        "--strict-missing",
+        action="store_true",
+        help="fail when a selected adapter distribution is unavailable",
+    )
+    compatibility.add_argument("--settle", type=float, default=0.01)
+    compatibility.add_argument("--operation-timeout", type=float, default=5.0)
+    compatibility.add_argument("--tool-timeout", type=float, default=0.05)
+    compatibility.set_defaults(handler=_run_compatibility)
 
     scenarios = commands.add_parser("scenarios", help="list built-in guarantee scenarios")
     scenarios.set_defaults(handler=_list_scenarios)
@@ -101,6 +146,34 @@ def _run_suite(arguments: argparse.Namespace) -> int:
     if arguments.sarif:
         write_sarif(suite, arguments.sarif)
     return suite.exit_code
+
+
+def _run_compatibility(arguments: argparse.Namespace) -> int:
+    specs = select_adapter_specs(tuple(arguments.adapter) if arguments.adapter else None)
+    profiles = (
+        tuple(ApprovalBarrierProfile(value) for value in arguments.profile)
+        if arguments.profile
+        else tuple(ApprovalBarrierProfile)
+    )
+    evidence = generate_compatibility_evidence(
+        specs=specs,
+        profiles=profiles,
+        settle_seconds=arguments.settle,
+        operation_timeout_seconds=arguments.operation_timeout,
+        tool_timeout_seconds=arguments.tool_timeout,
+    )
+    outputs_current = write_compatibility_outputs(
+        evidence,
+        json_path=arguments.json,
+        markdown_path=arguments.markdown,
+        check_outputs=arguments.check,
+    )
+    if arguments.json is None:
+        print(dump_compatibility_evidence(evidence), end="")
+    if not outputs_current:
+        print("compatibility outputs are out of date", file=sys.stderr)
+        return 1
+    return int(evidence_has_errors(evidence, strict_missing=arguments.strict_missing))
 
 
 def _use_color(mode: str) -> bool:
