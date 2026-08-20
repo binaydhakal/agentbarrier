@@ -139,6 +139,142 @@ def test_runtime_barrier_supports_async_functions(tmp_path: Path) -> None:
     asyncio.run(run())
 
 
+def test_runtime_barrier_executes_dynamic_tool_call_once(tmp_path: Path) -> None:
+    calls: list[dict[str, object]] = []
+    arguments = {"request_id": "dynamic-1", "amount": 10}
+
+    def operation() -> dict[str, object]:
+        calls.append(arguments)
+        return {"request_id": "dynamic-1", "refunded": True}
+
+    with SQLiteRuntimeStore(tmp_path / "runtime.db") as store:
+        barrier = RuntimeBarrier(policy=make_policy(), store=store, namespace="mcp-gateway")
+        expected = {"request_id": "dynamic-1", "refunded": True}
+
+        assert (
+            barrier.execute(
+                tool_name="payments.refund",
+                arguments=arguments,
+                idempotency_key="dynamic-1",
+                operation=operation,
+            )
+            == expected
+        )
+        assert (
+            barrier.execute(
+                tool_name="payments.refund",
+                arguments=arguments,
+                idempotency_key="dynamic-1",
+                operation=operation,
+            )
+            == expected
+        )
+        assert calls == [arguments]
+        assert store.list_actions()[0].namespace == "mcp-gateway"
+
+
+def test_runtime_barrier_dynamic_call_pauses_and_binds_exact_arguments(tmp_path: Path) -> None:
+    calls = 0
+
+    def operation() -> dict[str, bool]:
+        nonlocal calls
+        calls += 1
+        return {"refunded": True}
+
+    with SQLiteRuntimeStore(tmp_path / "runtime.db") as store:
+        barrier = RuntimeBarrier(policy=make_policy(), store=store)
+        call = {
+            "tool_name": "payments.refund",
+            "arguments": {"request_id": "dynamic-large", "amount": 100},
+            "idempotency_key": "dynamic-large",
+            "operation": operation,
+        }
+        with pytest.raises(ApprovalRequired) as pending:
+            barrier.execute(**call)  # type: ignore[arg-type]
+        assert calls == 0
+
+        store.decide(pending.value.action.action_id, Decision.APPROVE, decided_by="reviewer")
+        assert barrier.execute(**call) == {"refunded": True}  # type: ignore[arg-type]
+        with pytest.raises(ActionBindingError):
+            barrier.execute(
+                tool_name="payments.refund",
+                arguments={"request_id": "dynamic-large", "amount": 101},
+                idempotency_key="dynamic-large",
+                operation=operation,
+            )
+        assert calls == 1
+
+
+def test_runtime_barrier_executes_dynamic_async_tool_call_once(tmp_path: Path) -> None:
+    calls = 0
+
+    async def run() -> None:
+        nonlocal calls
+
+        async def operation() -> dict[str, str]:
+            nonlocal calls
+            calls += 1
+            await asyncio.sleep(0)
+            return {"status": "sent"}
+
+        policy = RuntimePolicy(
+            "1",
+            (PolicyRule("allow messages", PolicyEffect.ALLOW, tool="messages.send"),),
+        )
+        with SQLiteRuntimeStore(tmp_path / "runtime.db") as store:
+            barrier = RuntimeBarrier(policy=policy, store=store)
+            keywords = {
+                "tool_name": "messages.send",
+                "arguments": {"to": "person@example.com", "body": "Hello"},
+                "idempotency_key": "message-1",
+                "operation": operation,
+            }
+            assert await barrier.execute_async(**keywords) == {  # type: ignore[arg-type]
+                "status": "sent"
+            }
+            assert await barrier.execute_async(**keywords) == {  # type: ignore[arg-type]
+                "status": "sent"
+            }
+
+    asyncio.run(run())
+    assert calls == 1
+
+
+@pytest.mark.parametrize(
+    ("tool_name", "arguments", "idempotency_key", "message"),
+    [
+        ("", {}, "key", "tool_name"),
+        ("demo.tool", {"bad": object()}, "key", "unsupported"),
+        ("demo.tool", {}, "", "idempotency_key"),
+        ("demo.tool", {}, 1, "idempotency_key"),
+    ],
+)
+def test_runtime_barrier_validates_dynamic_call_before_execution(
+    tmp_path: Path,
+    tool_name: str,
+    arguments: object,
+    idempotency_key: object,
+    message: str,
+) -> None:
+    called = False
+
+    def operation() -> None:
+        nonlocal called
+        called = True
+
+    with SQLiteRuntimeStore(tmp_path / "runtime.db") as store:
+        barrier = RuntimeBarrier(policy=make_policy(), store=store)
+        with pytest.raises((TypeError, ValueError), match=message):
+            barrier.execute(
+                tool_name=tool_name,
+                arguments=arguments,  # type: ignore[arg-type]
+                idempotency_key=idempotency_key,  # type: ignore[arg-type]
+                operation=operation,
+            )
+        assert called is False
+        assert store.list_actions() == ()
+
+
 def test_runtime_barrier_marks_exceptions_and_invalid_results_unknown(tmp_path: Path) -> None:
     def failing(request_id: str) -> None:
         raise ConnectionError("response lost")

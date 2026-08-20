@@ -176,11 +176,62 @@ def build_parser() -> argparse.ArgumentParser:
     _add_runtime_db_option(database_backup)
     database_backup.add_argument("--output", required=True, metavar="PATH")
     database_backup.set_defaults(handler=_run_database_backup)
+
+    mcp = commands.add_parser("mcp", help="run the policy gateway in front of an MCP server")
+    mcp_commands = mcp.add_subparsers(dest="mcp_transport", required=True)
+
+    mcp_stdio = mcp_commands.add_parser("stdio", help="serve the MCP gateway over stdio")
+    _add_mcp_gateway_options(mcp_stdio)
+    mcp_stdio.set_defaults(handler=_run_mcp_gateway)
+
+    mcp_http = mcp_commands.add_parser(
+        "http",
+        help="serve the MCP gateway over Streamable HTTP",
+    )
+    _add_mcp_gateway_options(mcp_http)
+    mcp_http.add_argument("--host", default="127.0.0.1", help="listen host (default: 127.0.0.1)")
+    mcp_http.add_argument("--port", type=int, default=8765, help="listen port (default: 8765)")
+    mcp_http.add_argument("--path", default="/mcp", help="MCP endpoint path (default: /mcp)")
+    mcp_http.set_defaults(handler=_run_mcp_gateway)
     return parser
 
 
 def _add_runtime_db_option(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--db", required=True, metavar="PATH", help="runtime SQLite database")
+
+
+def _add_mcp_gateway_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--policy", required=True, metavar="PATH", help="runtime policy JSON")
+    _add_runtime_db_option(parser)
+    parser.add_argument(
+        "--namespace",
+        default="mcp-gateway",
+        help="runtime action namespace (default: mcp-gateway)",
+    )
+    upstream = parser.add_mutually_exclusive_group(required=True)
+    upstream.add_argument("--upstream-url", help="upstream Streamable HTTP MCP endpoint")
+    upstream.add_argument("--upstream-command", help="upstream stdio MCP executable")
+    parser.add_argument(
+        "--upstream-arg",
+        action="append",
+        default=[],
+        metavar="VALUE",
+        help="one upstream command argument; repeat as needed",
+    )
+    parser.add_argument(
+        "--upstream-timeout",
+        type=float,
+        metavar="SECONDS",
+        help="optional upstream request timeout",
+    )
+    parser.add_argument(
+        "--idempotency-argument",
+        metavar="DOTTED_PATH",
+        help=(
+            "read stable operation identity from this argument path instead of "
+            "params._meta['agentbarrier/idempotencyKey']"
+        ),
+    )
 
 
 def _add_run_options(parser: argparse.ArgumentParser) -> None:
@@ -399,6 +450,40 @@ def _run_database_backup(arguments: argparse.Namespace) -> int:
     with SQLiteRuntimeStore(database_path) as store:
         destination = store.backup(cast(str, arguments.output))
     print(f"Runtime database backup written to {destination}")
+    return 0
+
+
+def _run_mcp_gateway(arguments: argparse.Namespace) -> int:
+    try:
+        from agentbarrier.mcp.runner import (
+            MCPGatewayConfig,
+            run_http_gateway,
+            run_stdio_gateway,
+        )
+    except ImportError as error:
+        raise ImportError(
+            "MCP gateway dependencies are unavailable; install 'agentbarrier[mcp]'"
+        ) from error
+
+    config = MCPGatewayConfig(
+        policy_path=Path(cast(str, arguments.policy)),
+        database_path=Path(cast(str, arguments.db)),
+        namespace=cast(str, arguments.namespace),
+        upstream_url=cast(str | None, arguments.upstream_url),
+        upstream_command=cast(str | None, arguments.upstream_command),
+        upstream_args=tuple(cast(list[str], arguments.upstream_arg)),
+        upstream_timeout_seconds=cast(float | None, arguments.upstream_timeout),
+        idempotency_argument=cast(str | None, arguments.idempotency_argument),
+    )
+    if arguments.mcp_transport == "stdio":
+        run_stdio_gateway(config)
+    else:
+        run_http_gateway(
+            config,
+            host=cast(str, arguments.host),
+            port=cast(int, arguments.port),
+            path=cast(str, arguments.path),
+        )
     return 0
 
 

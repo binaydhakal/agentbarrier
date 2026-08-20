@@ -19,14 +19,16 @@
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/agentbarrier.svg" alt="License"></a>
 </p>
 
-AgentBarrier is a deterministic test harness for the control guarantees around AI-agent tool
-execution. It verifies that approval, rejection, cancellation, timeout, replay, delegation,
-ambiguous outcomes, audit receipts, and parallel execution controls prevent unintended side
-effects.
+AgentBarrier is an open-source policy gateway and approval control plane for AI-agent tool calls.
+It sits immediately before a consequential action, decides whether to allow, deny, or pause the
+exact call for review, prevents duplicate execution, and records what happened outside the model's
+context.
 
-It does not judge model responses and does not need an API key. AgentBarrier invokes controlled
-sentinel tools, observes their effects outside the agent framework, and reports whether the
-framework or application honored the expected lifecycle boundary.
+Use it around Python tools today or run the development MCP gateway in front of an existing tool
+server. The same project also includes a deterministic test suite for approval, rejection,
+cancellation, timeout, replay, delegation, ambiguous outcomes, audit receipts, and parallel
+execution controls. It does not ask a model to judge another model and does not require a model API
+key.
 
 Runtime enforcement is available in 0.4.0. It applies deterministic allow, deny, and approval rules
 directly around synchronous and asynchronous Python tool functions, persists exact approval state
@@ -34,12 +36,17 @@ in SQLite, prevents duplicate execution, and emits integrity-linked audit receip
 [runtime guide](https://github.com/binaydhakal/agentbarrier/blob/main/docs/runtime.md).
 The [runtime API reference](https://github.com/binaydhakal/agentbarrier/blob/main/docs/runtime-api.md)
 documents the public classes, lifecycle, and failure contract.
+The main branch is developing 0.5.0, which adds a deployable
+[MCP policy gateway](https://github.com/binaydhakal/agentbarrier/blob/main/docs/mcp-gateway.md)
+using the current MCP 2026-07-28 protocol through its official Python SDK.
 
 > **Status:** early development. The public adapter contract is usable, but compatibility should
 > be pinned until the first stable release.
 
 <p align="center">
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/adapters.md">Adapter guide</a>
+  ·
+  <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/mcp-gateway.md">MCP gateway</a>
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/compatibility.md">Compatibility</a>
   ·
@@ -53,6 +60,50 @@ documents the public classes, lifecycle, and failure contract.
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/CONTRIBUTING.md">Contributing</a>
 </p>
+
+## What this protects in a real application
+
+- a support agent issuing a refund above a configured amount;
+- a coding agent deploying, deleting infrastructure, or applying a privileged change;
+- a database assistant running writes while ordinary reads remain automatic;
+- a communications agent sending external email or publishing content; and
+- any MCP client calling a consequential tool hosted by an existing MCP server.
+
+The model can propose the action, but it cannot approve its own request, change the reviewed
+arguments afterward, or cause the same approved operation to execute twice through a retry.
+
+## Run as an MCP safety gateway
+
+Until 0.5.0 is released, install the optional gateway dependencies from the main branch:
+
+```bash
+python -m pip install 'agentbarrier[mcp] @ git+https://github.com/binaydhakal/agentbarrier.git'
+```
+
+Place AgentBarrier between an MCP client and an existing stdio server:
+
+```bash
+agentbarrier mcp stdio \
+  --policy policy.json \
+  --db agentbarrier.db \
+  --upstream-command python \
+  --upstream-arg server.py \
+  --idempotency-argument request_id
+```
+
+Or expose a local Streamable HTTP gateway in front of a remote MCP endpoint:
+
+```bash
+agentbarrier mcp http \
+  --policy policy.json \
+  --db agentbarrier.db \
+  --upstream-url https://mcp.example.com/mcp
+```
+
+The HTTP listener binds to `127.0.0.1:8765` by default. Each call must supply stable business
+identity through the configured argument path or the `agentbarrier/idempotencyKey` MCP metadata
+field. See the [MCP gateway guide](docs/mcp-gateway.md) for the policy example, approval flow,
+security boundary, and current development limitations.
 
 ## See a real control failure
 

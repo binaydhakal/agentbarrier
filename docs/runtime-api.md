@@ -53,7 +53,7 @@ Ordered comparisons require two numbers or two strings; they never coerce types.
 
 `PolicyEffect` values are `allow`, `deny`, and `require_approval`.
 
-## Protected functions
+## Runtime execution boundary
 
 ### `RuntimeBarrier`
 
@@ -76,6 +76,30 @@ implicit and explicit default arguments identify the same request.
 
 The wrapper is the complete-mediation boundary. Every route to the consequential function must go
 through it; retaining an unwrapped route bypasses AgentBarrier.
+
+Dynamic dispatchers and protocol gateways use the same boundary without synthesizing a Python
+signature:
+
+```python
+barrier.execute(
+    tool_name="payments.refund",
+    arguments={"request_id": "refund-1001", "amount": 100},
+    idempotency_key="refund-1001",
+    operation=call_payment_provider,
+)
+
+await barrier.execute_async(
+    tool_name="messages.send",
+    arguments={"request_id": "message-1001", "to": "person@example.com"},
+    idempotency_key="message-1001",
+    operation=call_async_provider,
+)
+```
+
+`execute` and `execute_async` call the supplied zero-argument operation only after the same policy,
+approval, exact-binding, and atomic-claim checks used by `protect`. A completed result is returned
+from durable storage without invoking the operation again. An exception or cancellation after the
+claim produces an `unknown` action and is never retried automatically.
 
 ## SQLite runtime store
 

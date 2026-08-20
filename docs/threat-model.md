@@ -1,8 +1,9 @@
 # Threat model
 
-AgentBarrier has two boundaries. The test harness finds lifecycle-control failures using harmless
-sentinel effects. The runtime layer enforces deterministic policy immediately before a real Python
-function crosses a consequential effect boundary.
+AgentBarrier has three related boundaries. The test harness finds lifecycle-control failures using
+harmless sentinel effects. The Python runtime layer enforces deterministic policy immediately
+before a real function crosses a consequential effect boundary. The MCP gateway applies the same
+runtime boundary before forwarding a tool call to an upstream server.
 
 ## Security goals
 
@@ -31,6 +32,11 @@ SQLite library, database path, reviewer identity supplied to the local CLI, and 
 idempotency lookup are trusted. The model and model-visible conversation are not trusted to approve,
 identify, persist, or reconcile an action.
 
+For the MCP gateway, the official MCP SDK, gateway configuration, upstream target, and configured
+idempotency resolver are also trusted. The downstream MCP client, its JSON-RPC request identifier,
+tool arguments, and arbitrary request metadata are untrusted. An idempotency value is identity, not
+authority: policy still evaluates every exact request.
+
 An application result is meaningful only when the sentinel replaces the production tool at the
 same complete-mediation boundary. Replacing a tool earlier tests planning but can miss a later
 execution bypass. Replacing it later can allow unsafe work before observation.
@@ -38,6 +44,10 @@ execution bypass. Replacing it later can allow unsafe work before observation.
 Runtime protection is meaningful only when every route to the consequential function uses the
 protected wrapper. Code with direct access to the original function, database credentials, payment
 client, or runtime database can bypass or tamper with the boundary.
+
+MCP protection is meaningful only when clients cannot reach the upstream server or its credentials
+without crossing the gateway. A proxy endpoint is not complete mediation if the original stdio
+command, URL, API token, or network route remains available to the agent.
 
 ## Runtime controls and residual risks
 
@@ -62,6 +72,14 @@ client, or runtime database can bypass or tamper with the boundary.
 - Policy order is security-sensitive because the first matching rule wins. Review policy changes,
   use an explicit deny default, assign a new policy version, and validate against the published
   schema before deployment.
+- MCP JSON-RPC request IDs are not treated as business idempotency keys. The gateway requires an
+  explicit metadata value or configured argument path, binds it to the exact request, and fails
+  closed when it is absent or changes meaning.
+- The development HTTP gateway binds to loopback by default and does not yet authenticate public
+  MCP clients. Public exposure requires TLS, authenticated ingress, request-size and rate limits,
+  and network isolation from the upstream endpoint until native service authorization ships.
+- Cancellation and upstream failures after an execution claim become `unknown`. The gateway
+  cannot infer whether an external side effect committed from a closed stream or protocol error.
 
 ## Out of scope
 
@@ -75,6 +93,9 @@ AgentBarrier does not:
 - turn a failed guarantee into a vulnerability classification without an application threat model;
 - sandbox or authenticate local runtime callers;
 - stop code that bypasses the protected function wrapper;
+- stop an MCP client that can bypass the gateway and call the upstream server directly;
+- authenticate public MCP clients in the current 0.5.0 development slice;
+- invent a reliable business idempotency key from a JSON-RPC request ID;
 - secure, sign, encrypt, replicate, or retain the SQLite database and its backups;
 - authenticate CLI reviewer names or provide multi-user authorization in 0.4;
 - guarantee exactly-once behavior in an external system that ignores the business idempotency key;

@@ -6,6 +6,16 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+### Added
+
+- Transport-neutral sync and async runtime execution APIs for dynamic tool dispatchers, MCP
+  gateways, and framework integrations that cannot use a Python decorator.
+- MCP v2 gateway foundation using the current 2026-07-28 protocol through the official SDK, with
+  stdio and Streamable HTTP runners, exact operation identity, approval holds, duplicate-call
+  protection, result replay, reconnect handling, progress forwarding, and fail-closed upstream
+  cancellation or failure behavior.
+- Optional `mcp` dependency group and `agentbarrier mcp stdio|http` operational commands.
+
 ## [0.4.0] - 2026-08-20
 
 ### Added

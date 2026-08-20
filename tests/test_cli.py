@@ -8,6 +8,7 @@ import pytest
 
 from agentbarrier import __version__
 from agentbarrier.cli import main
+from agentbarrier.mcp import runner as mcp_runner
 from agentbarrier.runtime import PolicyDecision, PolicyEffect, RuntimeRequest, RuntimeStatus
 from agentbarrier.runtime.store import SQLiteRuntimeStore
 
@@ -69,6 +70,82 @@ def test_scenarios_cli_lists_guarantees(capsys: pytest.CaptureFixture[str]) -> N
     assert "parallel_barrier" in output
     assert "outcome_ambiguity" in output
     assert "audit_receipts" in output
+
+
+def test_mcp_stdio_cli_builds_gateway_configuration(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: list[mcp_runner.MCPGatewayConfig] = []
+    monkeypatch.setattr(mcp_runner, "run_stdio_gateway", captured.append)
+    policy = tmp_path / "policy.json"
+    database = tmp_path / "runtime.db"
+
+    assert (
+        main(
+            [
+                "mcp",
+                "stdio",
+                "--policy",
+                str(policy),
+                "--db",
+                str(database),
+                "--namespace",
+                "support-gateway",
+                "--upstream-command",
+                "python",
+                "--upstream-arg",
+                "server.py",
+                "--idempotency-argument",
+                "request.id",
+            ]
+        )
+        == 0
+    )
+    assert captured == [
+        mcp_runner.MCPGatewayConfig(
+            policy_path=policy,
+            database_path=database,
+            namespace="support-gateway",
+            upstream_command="python",
+            upstream_args=("server.py",),
+            idempotency_argument="request.id",
+        )
+    ]
+
+
+def test_mcp_http_cli_uses_safe_listen_defaults(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: list[tuple[mcp_runner.MCPGatewayConfig, str, int, str]] = []
+
+    def run_http(
+        config: mcp_runner.MCPGatewayConfig,
+        *,
+        host: str,
+        port: int,
+        path: str,
+    ) -> None:
+        captured.append((config, host, port, path))
+
+    monkeypatch.setattr(mcp_runner, "run_http_gateway", run_http)
+    assert (
+        main(
+            [
+                "mcp",
+                "http",
+                "--policy",
+                str(tmp_path / "policy.json"),
+                "--db",
+                str(tmp_path / "runtime.db"),
+                "--upstream-url",
+                "https://mcp.example.com/mcp",
+            ]
+        )
+        == 0
+    )
+    assert captured[0][1:] == ("127.0.0.1", 8765, "/mcp")
 
 
 def test_cli_can_force_color(capsys: pytest.CaptureFixture[str]) -> None:

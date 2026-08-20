@@ -1,8 +1,8 @@
 # Runtime delivery plan
 
-AgentBarrier is evolving from a deterministic safety test harness into a runtime enforcement layer
-that uses the same action identity and evidence concepts in production. The test harness remains a
-first-class feature: a runtime rule should be enforceable during execution and reproducible in CI.
+AgentBarrier is a runtime policy gateway and approval control plane with a deterministic safety
+test suite. Its primary production job is to mediate real agent actions; the test suite makes every
+runtime guarantee reproducible in CI.
 
 ## Boundary and invariants
 
@@ -70,6 +70,8 @@ Deliverables:
 - a self-hosted approval dashboard that never exposes database or signing credentials to browsers;
 - PostgreSQL storage with schema migrations and behavioral parity with SQLite;
 - Slack notifications and interactive decisions with request signing and identity binding;
+- an emergency pause switch and per-tool or per-principal action limits to reduce agent blast
+  radius without requiring manual review of every low-risk call;
 - container and local deployment examples with secure defaults.
 
 Release gates:
@@ -78,6 +80,7 @@ Release gates:
   handling checks pass for the dashboard;
 - SQLite and PostgreSQL pass the same store contract and concurrency suite;
 - forged, replayed, expired, and unauthorized Slack requests are rejected.
+- limits remain atomic under concurrent workers and the emergency pause fails closed.
 
 ## 1.0.0 — stable production contract
 

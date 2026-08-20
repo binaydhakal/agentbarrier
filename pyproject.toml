@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "agentbarrier"
 dynamic = ["version"]
-description = "Runtime approval enforcement and deterministic safety tests for AI agents"
+description = "Runtime policy gateway, approvals, and safety tests for AI-agent tool calls"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
@@ -24,6 +24,9 @@ keywords = [
   "approval",
   "human-in-the-loop",
   "tool-calling",
+  "mcp",
+  "policy-as-code",
+  "ai-firewall",
   "guardrails",
   "idempotency",
   "cancellation",
@@ -47,6 +50,10 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
+mcp = [
+  "mcp>=2,<3",
+  "uvicorn>=0.34,<1",
+]
 openai = ["openai-agents>=0.22,<1"]
 langgraph = ["langgraph>=1.2,<2; python_version >= '3.11'"]
 pydantic-ai = ["pydantic-ai-slim>=2.32,<3"]
@@ -66,6 +73,8 @@ test = [
   "twine>=6.1",
 ]
 all = [
+  "mcp>=2,<3",
+  "uvicorn>=0.34,<1",
   "openai-agents>=0.22,<1",
   "langgraph>=1.2,<2; python_version >= '3.11'",
   "pydantic-ai-slim>=2.32,<3",
@@ -129,6 +138,10 @@ packages = ["agentbarrier"]
 
 [tool.uv]
 conflicts = [
+  [
+    { extra = "mcp" },
+    { extra = "crewai" },
+  ],
   [
     { extra = "openai" },
     { extra = "crewai" },

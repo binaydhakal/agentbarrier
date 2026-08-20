@@ -47,6 +47,7 @@ Track the complete release in the [`0.4.0` milestone](https://github.com/binaydh
 - [ ] Add a small self-hosted approval dashboard with live pending-action updates.
 - [ ] Add a PostgreSQL store with migrations and concurrency parity with SQLite.
 - [ ] Add signed Slack approval notifications and decisions.
+- [ ] Add an emergency pause switch and atomic per-tool or per-principal action limits.
 - [ ] Document secure single-node and team deployment patterns.
 
 ## 1.0.0 — stable production contract
