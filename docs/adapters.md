@@ -29,6 +29,19 @@ assertions. The adapter owns only lifecycle orchestration.
 Only declare capabilities that the implementation can exercise. Missing capabilities are visible
 as skips and become failures when callers select `strict_skips`.
 
+## Approval-barrier profiles
+
+The `parallel_barrier` scenario supports two explicit expectations:
+
+- `run-wide` requires every sibling effect to remain uncommitted while any action is pending
+  approval. This is the default and strictest profile.
+- `per-action` allows ungated siblings to proceed but still requires the gated action to remain
+  uncommitted until its own approval.
+
+Profiles are runner expectations, not adapter configuration. An adapter with a stricter run-wide
+hold passes both profiles. Application tests should choose the weakest contract the application is
+actually prepared to enforce, and retain the profile field from report evidence.
+
 ## Complete mediation
 
 The sentinel must be invoked at the same boundary where the production tool would create its

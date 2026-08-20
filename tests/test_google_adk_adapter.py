@@ -9,7 +9,12 @@ import pytest
 from agentbarrier.adapters.google_adk import GoogleADKAdapter
 from agentbarrier.errors import AdapterContractError, UnsupportedCapability
 from agentbarrier.journal import EffectJournal
-from agentbarrier.models import ActionRequest, Capability, ScenarioStatus
+from agentbarrier.models import (
+    ActionRequest,
+    ApprovalBarrierProfile,
+    Capability,
+    ScenarioStatus,
+)
 from agentbarrier.probe import EffectProbe
 from agentbarrier.runner import RunnerOptions, SuiteRunner
 
@@ -50,6 +55,15 @@ def test_google_adk_adapter_exercises_declared_lifecycles_without_credentials() 
         if result.status is ScenarioStatus.FAILED and result.finding is not None
     }
     assert failed == {"parallel_barrier": "AB010"}
+    per_action = SuiteRunner(
+        RunnerOptions(
+            settle_seconds=0.01,
+            operation_timeout_seconds=5.0,
+            scenarios=("parallel_barrier",),
+            approval_profile=ApprovalBarrierProfile.PER_ACTION,
+        )
+    ).verify_sync(adapter)
+    assert per_action.passed
 
 
 @pytest.mark.integration

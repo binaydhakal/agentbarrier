@@ -13,6 +13,7 @@ from pathlib import Path
 from agentbarrier.adapter import AgentAdapter
 from agentbarrier.journal import EffectJournal
 from agentbarrier.models import (
+    ApprovalBarrierProfile,
     AuditReceipt,
     EffectEvent,
     Finding,
@@ -33,8 +34,11 @@ class RunnerOptions:
     strict_skips: bool = False
     scenarios: tuple[str, ...] | None = None
     fail_fast: bool = False
+    approval_profile: ApprovalBarrierProfile = ApprovalBarrierProfile.RUN_WIDE
 
     def __post_init__(self) -> None:
+        if not isinstance(self.approval_profile, ApprovalBarrierProfile):
+            raise TypeError("approval_profile must be an ApprovalBarrierProfile")
         for field_name in (
             "settle_seconds",
             "operation_timeout_seconds",
@@ -68,6 +72,7 @@ class SuiteRunner:
             adapter=adapter.name,
             results=tuple(results),
             strict_skips=self.options.strict_skips,
+            approval_profile=self.options.approval_profile,
         )
 
     def verify_sync(self, adapter: AgentAdapter) -> SuiteResult:
@@ -113,6 +118,7 @@ class SuiteRunner:
                         settle_seconds=self.options.settle_seconds,
                         operation_timeout_seconds=self.options.operation_timeout_seconds,
                         tool_timeout_seconds=self.options.tool_timeout_seconds,
+                        approval_profile=self.options.approval_profile,
                     ),
                 )
                 if returned_receipts is not None:

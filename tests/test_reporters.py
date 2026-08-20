@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from agentbarrier.adapters.reference import ReferenceAdapter
-from agentbarrier.models import Capability
+from agentbarrier.models import ApprovalBarrierProfile, Capability
 from agentbarrier.reporters import (
     render_console,
     suite_to_dict,
@@ -30,12 +30,21 @@ def test_all_report_formats_are_well_formed(tmp_path: Path) -> None:
     json_report = json.loads(json_path.read_text())
     junit = ET.parse(junit_path).getroot()
     sarif = json.loads(sarif_path.read_text())
-    assert json_report["schema_version"] == "1.0"
+    assert json_report["schema_version"] == "1.1"
+    assert json_report["approval_profile"] == "run-wide"
     assert json_report["summary"]["passed"] == 10
     assert junit.tag == "testsuites"
+    junit_property = junit.find("./testsuite/properties/property")
+    assert junit_property is not None
+    assert junit_property.attrib == {
+        "name": "agentbarrier.approval_profile",
+        "value": "run-wide",
+    }
     assert sarif["version"] == "2.1.0"
+    assert sarif["runs"][0]["properties"]["approvalProfile"] == "run-wide"
     assert sarif["runs"][0]["results"] == []
     assert "10 passed" in render_console(suite)
+    assert "approval-profile=run-wide" in render_console(suite)
     audit_result = next(item for item in json_report["results"] if item["id"] == "audit_receipts")
     assert audit_result["receipts"]
 
@@ -62,3 +71,26 @@ def test_failure_reports_include_structured_finding(tmp_path: Path) -> None:
     assert "Fix: Move the approval barrier" in plain_console
     assert "\x1b[31;1mFAIL" in color_console
     assert "\x1b[31;1mAB002" in color_console
+
+
+def test_reports_preserve_the_selected_per_action_profile(tmp_path: Path) -> None:
+    suite = SuiteRunner(
+        RunnerOptions(
+            scenarios=("parallel_barrier",),
+            approval_profile=ApprovalBarrierProfile.PER_ACTION,
+        )
+    ).verify_sync(ReferenceAdapter())
+    junit_path = tmp_path / "profile.xml"
+    sarif_path = tmp_path / "profile.sarif"
+
+    write_junit(suite, junit_path)
+    write_sarif(suite, sarif_path)
+
+    junit = ET.parse(junit_path).getroot()
+    junit_property = junit.find("./testsuite/properties/property")
+    sarif = json.loads(sarif_path.read_text())
+    assert suite_to_dict(suite)["approval_profile"] == "per-action"
+    assert junit_property is not None
+    assert junit_property.attrib["value"] == "per-action"
+    assert sarif["runs"][0]["properties"]["approvalProfile"] == "per-action"
+    assert "approval-profile=per-action" in render_console(suite)

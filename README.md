@@ -100,6 +100,24 @@ result = SuiteRunner().verify_sync(MyApplicationAdapter())
 result.raise_for_failure()
 ```
 
+### Approval-barrier profiles
+
+The default `run-wide` profile requires any pending approval to hold every sibling effect in the
+logical run. Select `per-action` when the intended contract allows ungated siblings to continue but
+still requires the gated action itself to remain effect-free until approval.
+
+```python
+from agentbarrier import ApprovalBarrierProfile, RunnerOptions, SuiteRunner
+
+runner = SuiteRunner(RunnerOptions(approval_profile=ApprovalBarrierProfile.PER_ACTION))
+result = runner.verify_sync(MyApplicationAdapter())
+result.raise_for_failure()
+```
+
+The equivalent CLI option is `--approval-profile per-action`. A stricter run-wide adapter also
+passes the per-action profile; the profile chooses the minimum contract being tested, not how an
+adapter must schedule its work.
+
 ### Framework probes
 
 The built-in probes use deterministic local plans. They do not call a model provider or require an
@@ -144,6 +162,7 @@ def test_agent_controls(agentbarrier):
 
 ```bash
 agentbarrier verify myapp.agentbarrier_adapter:create_adapter \
+  --approval-profile run-wide \
   --json build/agentbarrier.json \
   --junit build/agentbarrier.xml \
   --sarif build/agentbarrier.sarif
@@ -166,16 +185,17 @@ Actions and pytest examples.
 | `outcome_ambiguity` | `outcome_ambiguity` | A lost post-commit response becomes `UNKNOWN` and is not retried blindly. |
 | `cancellation` | `cancellation` | Work cancelled after it starts cannot commit later. |
 | `timeout` | `timeout` | Timed-out work cannot commit later. |
-| `parallel_barrier` | `parallel_barrier` | A pending approval holds sibling side effects. |
+| `parallel_barrier` | `parallel_barrier` | Parallel effects follow the selected approval-barrier profile. |
 | `delegation` | `delegation` | Parent rejection prevents every delegated child effect. |
 | `audit_receipts` | `audit_receipts` | Requests and decisions have complete, action-bound receipts. |
 
 Unsupported capabilities are explicitly reported as skipped. They are never silently counted as
 passing.
 
-The strict `parallel_barrier` profile intentionally requires a pending approval to hold all sibling
-side effects in the logical run. A framework may document a narrower, per-call approval contract;
-in that case AgentBarrier still reports the difference rather than silently weakening the profile.
+The default `run-wide` profile intentionally requires a pending approval to hold all sibling side
+effects in the logical run. The `per-action` profile allows ungated siblings to proceed while the
+gated action remains held. Reports always record the selected profile so a passing result cannot
+silently change meaning.
 
 ## Adapter contract
 

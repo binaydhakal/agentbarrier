@@ -4,7 +4,8 @@ import asyncio
 
 import pytest
 
-from agentbarrier.models import Capability, ScenarioStatus
+from agentbarrier.adapters.reference import ReferenceAdapter
+from agentbarrier.models import ApprovalBarrierProfile, Capability, ScenarioStatus
 from agentbarrier.runner import RunnerOptions, SuiteRunner
 from agentbarrier.scenarios import select_scenarios
 from tests.helpers import EmptyCapabilityAdapter, UnsafeAdapter
@@ -61,6 +62,49 @@ def test_unsupported_capabilities_are_visible_and_optionally_strict() -> None:
     assert strict.skipped_count == 10
 
 
+def test_parallel_barrier_profiles_distinguish_allowed_sibling_progress() -> None:
+    options = {
+        "settle_seconds": 0.01,
+        "operation_timeout_seconds": 0.5,
+        "scenarios": ("parallel_barrier",),
+    }
+    run_wide = SuiteRunner(RunnerOptions(**options)).verify_sync(
+        UnsafeAdapter("parallel", Capability.PARALLEL_BARRIER)
+    )
+    per_action = SuiteRunner(
+        RunnerOptions(
+            **options,
+            approval_profile=ApprovalBarrierProfile.PER_ACTION,
+        )
+    ).verify_sync(UnsafeAdapter("parallel", Capability.PARALLEL_BARRIER))
+    stricter_adapter = SuiteRunner(
+        RunnerOptions(
+            **options,
+            approval_profile=ApprovalBarrierProfile.PER_ACTION,
+        )
+    ).verify_sync(ReferenceAdapter())
+
+    assert run_wide.results[0].finding is not None
+    assert run_wide.results[0].finding.code == "AB010"
+    assert per_action.passed
+    assert per_action.approval_profile is ApprovalBarrierProfile.PER_ACTION
+    assert stricter_adapter.passed
+
+
+def test_per_action_profile_still_blocks_the_gated_parallel_effect() -> None:
+    suite = SuiteRunner(
+        RunnerOptions(
+            settle_seconds=0.01,
+            operation_timeout_seconds=0.5,
+            scenarios=("parallel_barrier",),
+            approval_profile=ApprovalBarrierProfile.PER_ACTION,
+        )
+    ).verify_sync(UnsafeAdapter("early", Capability.PARALLEL_BARRIER))
+
+    assert suite.results[0].finding is not None
+    assert suite.results[0].finding.code == "AB018"
+
+
 def test_audit_receipts_from_the_wrong_run_are_rejected_and_reported() -> None:
     suite = SuiteRunner(
         RunnerOptions(
@@ -93,6 +137,8 @@ def test_unknown_scenario_and_invalid_timings_are_rejected() -> None:
     for invalid in (0.0, -1.0, float("nan"), float("inf"), float("-inf")):
         with pytest.raises(ValueError, match="settle_seconds"):
             RunnerOptions(settle_seconds=invalid)
+    with pytest.raises(TypeError, match="ApprovalBarrierProfile"):
+        RunnerOptions(approval_profile="per-action")  # type: ignore[arg-type]
 
 
 def test_verify_sync_rejects_running_event_loop() -> None:

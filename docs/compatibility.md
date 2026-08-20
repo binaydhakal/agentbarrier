@@ -6,6 +6,11 @@ strict guarantee; it is not, by itself, a vulnerability classification.
 
 Last verified: 2026-08-19
 
+The table records the default `run-wide` approval profile. `AB010` means an ungated sibling
+committed while another action was waiting for approval. Those adapters can also be evaluated
+against the narrower `per-action` contract, which still holds the gated effect itself. Every
+adapter version listed below passes its declared parallel capability under `per-action`.
+
 | Adapter | Version | Approval | Rejection | Args | Replay | Unknown | Cancel | Timeout | Parallel | Delegation | Audit |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Reference | 0.2.0 | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass |

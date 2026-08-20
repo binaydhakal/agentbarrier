@@ -13,6 +13,7 @@ from typing import Any, cast
 from agentbarrier import __version__
 from agentbarrier.adapter import AgentAdapter
 from agentbarrier.adapters.reference import ReferenceAdapter
+from agentbarrier.models import ApprovalBarrierProfile
 from agentbarrier.reporters import render_console, write_json, write_junit, write_sarif
 from agentbarrier.runner import RunnerOptions, SuiteRunner
 from agentbarrier.scenarios import DEFAULT_SCENARIOS
@@ -49,6 +50,12 @@ def _add_run_options(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument("--strict-skips", action="store_true", help="fail when a capability skips")
     parser.add_argument("--fail-fast", action="store_true", help="stop at the first failure/error")
+    parser.add_argument(
+        "--approval-profile",
+        choices=[profile.value for profile in ApprovalBarrierProfile],
+        default=ApprovalBarrierProfile.RUN_WIDE.value,
+        help="approval scope for parallel effects (default: run-wide)",
+    )
     parser.add_argument("--settle", type=float, default=0.05, help="late-effect window in seconds")
     parser.add_argument("--operation-timeout", type=float, default=5.0)
     parser.add_argument("--tool-timeout", type=float, default=0.05)
@@ -83,6 +90,7 @@ def _run_suite(arguments: argparse.Namespace) -> int:
         strict_skips=arguments.strict_skips,
         scenarios=tuple(arguments.scenario) if arguments.scenario else None,
         fail_fast=arguments.fail_fast,
+        approval_profile=ApprovalBarrierProfile(arguments.approval_profile),
     )
     suite = SuiteRunner(options).verify_sync(adapter)
     print(render_console(suite, color=_use_color(arguments.color)))

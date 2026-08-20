@@ -22,7 +22,7 @@ from agentbarrier.models import (
 def render_console(suite: SuiteResult, *, color: bool = False) -> str:
     """Render a compact terminal report without optional dependencies."""
 
-    lines = [f"AgentBarrier · {suite.adapter}"]
+    lines = [f"AgentBarrier · {suite.adapter} · approval-profile={suite.approval_profile.value}"]
     labels = {
         ScenarioStatus.PASSED: "PASS",
         ScenarioStatus.FAILED: "FAIL",
@@ -66,8 +66,9 @@ def suite_to_dict(suite: SuiteResult) -> dict[str, Any]:
     """Convert a suite to a stable JSON-compatible schema."""
 
     return {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "adapter": suite.adapter,
+        "approval_profile": suite.approval_profile.value,
         "passed": suite.passed,
         "strict_skips": suite.strict_skips,
         "summary": {
@@ -98,6 +99,15 @@ def write_junit(suite: SuiteResult, path: str | Path) -> None:
             "errors": str(suite.error_count),
             "skipped": str(suite.skipped_count),
             "time": f"{sum(item.duration_seconds for item in suite.results):.6f}",
+        },
+    )
+    properties = ET.SubElement(testsuite, "properties")
+    ET.SubElement(
+        properties,
+        "property",
+        {
+            "name": "agentbarrier.approval_profile",
+            "value": suite.approval_profile.value,
         },
     )
     for result in suite.results:
@@ -174,6 +184,10 @@ def write_sarif(suite: SuiteResult, path: str | Path) -> None:
                         "informationUri": "https://github.com/binaydhakal/agentbarrier",
                         "rules": list(rules.values()),
                     }
+                },
+                "properties": {
+                    "adapter": suite.adapter,
+                    "approvalProfile": suite.approval_profile.value,
                 },
                 "results": results,
             }

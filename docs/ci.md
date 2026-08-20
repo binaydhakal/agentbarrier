@@ -43,6 +43,7 @@ jobs:
       - run: >-
           uv run
           agentbarrier verify myapp.agentbarrier_adapter:create_adapter
+          --approval-profile run-wide
           --json build/agentbarrier/results.json
           --junit build/agentbarrier/results.xml
       - if: always()
@@ -76,12 +77,22 @@ Run only the control-boundary test when diagnosing this gate:
 pytest tests/test_agent_controls.py
 ```
 
+To verify an application whose documented contract is per-action approval, configure the fixture
+for that test invocation:
+
+```bash
+pytest --agentbarrier-profile per-action tests/test_agent_controls.py
+```
+
+The selected profile is retained in AgentBarrier's console, JSON, JUnit, and SARIF output.
+
 ## Reports
 
 The CLI can write multiple report formats in one run:
 
 ```bash
 agentbarrier verify myapp.agentbarrier_adapter:create_adapter \
+  --approval-profile run-wide \
   --json build/agentbarrier/results.json \
   --junit build/agentbarrier/results.xml \
   --sarif build/agentbarrier/results.sarif

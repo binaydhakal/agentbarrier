@@ -15,13 +15,22 @@ from agentbarrier.adapters.reference import ReferenceAdapter
 def test_controls(agentbarrier):
     suite = agentbarrier.verify_sync(ReferenceAdapter())
     assert suite.passed_count == 10
+    assert suite.approval_profile.value == "per-action"
 """.lstrip(),
         encoding="utf-8",
     )
     environment = os.environ.copy()
     environment.pop("PYTEST_ADDOPTS", None)
     completed = subprocess.run(
-        [sys.executable, "-m", "pytest", "-q", str(consumer_test)],
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-q",
+            "--agentbarrier-profile",
+            "per-action",
+            str(consumer_test),
+        ],
         cwd=tmp_path,
         env=environment,
         check=False,

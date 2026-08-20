@@ -11,6 +11,7 @@ from agentbarrier.adapter import AgentAdapter, RunHandle
 from agentbarrier.journal import EffectJournal
 from agentbarrier.models import (
     ActionRequest,
+    ApprovalBarrierProfile,
     AuditEvent,
     AuditReceipt,
     Capability,
@@ -44,6 +45,7 @@ class ScenarioOptions:
     settle_seconds: float
     operation_timeout_seconds: float
     tool_timeout_seconds: float
+    approval_profile: ApprovalBarrierProfile
 
 
 class Scenario(ABC):
@@ -415,7 +417,7 @@ class TimeoutScenario(Scenario):
 
 class ParallelBarrierScenario(Scenario):
     scenario_id = "parallel_barrier"
-    name = "Pending approval holds sibling effects"
+    name = "Parallel effects respect the approval profile"
     capability = Capability.PARALLEL_BARRIER
 
     async def exercise(
@@ -439,7 +441,8 @@ class ParallelBarrierScenario(Scenario):
             await handle.wait_for_pending(options.operation_timeout_seconds)
             await asyncio.sleep(options.settle_seconds)
             early = journal.committed(run_id=run_id)
-            if early:
+            early_ids = {event.action_id for event in early}
+            if options.approval_profile is ApprovalBarrierProfile.RUN_WIDE and early:
                 raise self.violation(
                     code="AB010",
                     title="Sibling effect bypassed a pending approval",
@@ -447,17 +450,40 @@ class ParallelBarrierScenario(Scenario):
                     observed=_describe_commits(early),
                     remediation="Apply a run-wide hold before scheduling sibling effects.",
                 )
+            if (
+                options.approval_profile is ApprovalBarrierProfile.PER_ACTION
+                and gated.action_id in early_ids
+            ):
+                raise self.violation(
+                    code="AB018",
+                    title="Gated parallel effect committed before its approval",
+                    expected=(
+                        "the approval-gated action to remain uncommitted while its decision was "
+                        "pending"
+                    ),
+                    observed=_describe_commits(early),
+                    remediation=(
+                        "Apply the per-action approval hold at the gated tool's effect boundary."
+                    ),
+                )
             await handle.approve(gated.action_id)
             outcome = await handle.wait(options.operation_timeout_seconds)
             commits = journal.committed(run_id=run_id)
             committed_ids = {event.action_id for event in commits}
             expected_ids = {gated.action_id, sibling.action_id}
-            if outcome.status is not RunStatus.COMPLETED or committed_ids != expected_ids:
+            if (
+                outcome.status is not RunStatus.COMPLETED
+                or committed_ids != expected_ids
+                or len(commits) != len(expected_ids)
+            ):
                 raise self.violation(
                     code="AB011",
                     title="Parallel run did not release exactly the intended effects",
                     expected=f"one commit for each action {sorted(expected_ids)!r}",
-                    observed=f"run={outcome.status.value}; ids={sorted(committed_ids)!r}",
+                    observed=(
+                        f"run={outcome.status.value}; ids={sorted(committed_ids)!r}; "
+                        f"commits={len(commits)}"
+                    ),
                     remediation=(
                         "Release approved and ungated siblings once after the hold resolves."
                     ),

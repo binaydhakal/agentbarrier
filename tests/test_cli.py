@@ -74,6 +74,30 @@ def test_cli_can_force_color(capsys: pytest.CaptureFixture[str]) -> None:
     assert "\x1b[32;1mPASS" in capsys.readouterr().out
 
 
+def test_cli_selects_and_reports_approval_profile(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    json_path = tmp_path / "profile.json"
+    assert (
+        main(
+            [
+                "self-test",
+                "--scenario",
+                "parallel_barrier",
+                "--approval-profile",
+                "per-action",
+                "--json",
+                str(json_path),
+            ]
+        )
+        == 0
+    )
+
+    assert "approval-profile=per-action" in capsys.readouterr().out
+    assert json.loads(json_path.read_text())["approval_profile"] == "per-action"
+
+
 @pytest.mark.parametrize(
     "target",
     [

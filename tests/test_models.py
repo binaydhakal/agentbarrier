@@ -5,6 +5,7 @@ import pytest
 from agentbarrier.errors import SuiteFailure
 from agentbarrier.models import (
     ActionRequest,
+    ApprovalBarrierProfile,
     ScenarioResult,
     ScenarioStatus,
     SuiteResult,
@@ -69,8 +70,15 @@ def test_suite_counts_and_failure_policy() -> None:
     )
     ordinary = SuiteResult("demo", results)
     strict = SuiteResult("demo", results, strict_skips=True)
+    per_action = SuiteResult(
+        "demo",
+        results,
+        approval_profile=ApprovalBarrierProfile.PER_ACTION,
+    )
 
     assert ordinary.passed
+    assert ordinary.approval_profile is ApprovalBarrierProfile.RUN_WIDE
+    assert per_action.approval_profile is ApprovalBarrierProfile.PER_ACTION
     assert ordinary.exit_code == 0
     ordinary.raise_for_failure()
     assert strict.passed_count == 1

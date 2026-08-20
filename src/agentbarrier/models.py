@@ -29,6 +29,13 @@ class Capability(str, Enum):
     DELEGATION = "delegation"
 
 
+class ApprovalBarrierProfile(str, Enum):
+    """Approval scope expected by parallel-effect scenarios."""
+
+    RUN_WIDE = "run-wide"
+    PER_ACTION = "per-action"
+
+
 class Decision(str, Enum):
     """A decision applied to a pending action."""
 
@@ -225,6 +232,7 @@ class SuiteResult:
     adapter: str
     results: tuple[ScenarioResult, ...]
     strict_skips: bool = False
+    approval_profile: ApprovalBarrierProfile = ApprovalBarrierProfile.RUN_WIDE
 
     @property
     def passed_count(self) -> int:

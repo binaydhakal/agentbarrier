@@ -6,6 +6,11 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+### Added
+
+- Explicit `run-wide` and `per-action` approval-barrier profiles across the Python API, CLI,
+  pytest fixture, console output, JSON, JUnit, and SARIF evidence.
+
 ## [0.2.1] - 2026-08-19
 
 ### Fixed

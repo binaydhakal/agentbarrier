@@ -13,13 +13,16 @@ to reproduce locally and enforce in CI without model credentials.
 - [x] Expand the compatibility matrix with tested package and Python versions.
 - [x] Add copy-ready CI examples for application adapters.
 
-## Next
+## 0.3.0 — explicit policy and reproducible evidence
 
-- Add a CrewAI adapter after its control lifecycle can be exercised deterministically.
-- Add reusable profiles for per-action and strict run-wide approval barriers.
-- Improve reconciliation tests for ambiguous post-commit outcomes.
-- Add machine-readable compatibility evidence generated from integration tests.
-- Collect real application-adapter examples from messaging, payments, databases, and deployments.
+Track the complete release in the [`0.3.0` milestone](https://github.com/binaydhakal/agentbarrier/milestone/1).
+
+- [x] Add reusable [per-action and strict run-wide approval-barrier profiles](https://github.com/binaydhakal/agentbarrier/issues/5).
+- [ ] Generate [machine-readable compatibility evidence in CI](https://github.com/binaydhakal/agentbarrier/issues/6).
+- [ ] Improve [reconciliation coverage for ambiguous post-commit outcomes](https://github.com/binaydhakal/agentbarrier/issues/7).
+- [ ] Add a realistic, credential-free [SQLite payment-ledger example](https://github.com/binaydhakal/agentbarrier/issues/8).
+- [ ] Complete a deterministic [CrewAI adapter evaluation](https://github.com/binaydhakal/agentbarrier/issues/9).
+- [ ] Pass the complete [`0.3.0` release checklist](https://github.com/binaydhakal/agentbarrier/issues/10).
 
 ## How work is prioritized
 

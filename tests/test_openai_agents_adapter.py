@@ -6,7 +6,7 @@ import pytest
 
 from agentbarrier.adapters.openai_agents import OpenAIAgentsAdapter
 from agentbarrier.errors import AdapterContractError, UnsupportedCapability
-from agentbarrier.models import Capability, ScenarioStatus
+from agentbarrier.models import ApprovalBarrierProfile, Capability, ScenarioStatus
 from agentbarrier.runner import RunnerOptions, SuiteRunner
 
 
@@ -40,6 +40,15 @@ def test_openai_agents_adapter_exercises_declared_lifecycles_without_credentials
     ]
     assert exercised
     assert all(result.status is not ScenarioStatus.SKIPPED for result in exercised)
+    per_action = SuiteRunner(
+        RunnerOptions(
+            settle_seconds=0.01,
+            operation_timeout_seconds=5.0,
+            scenarios=("parallel_barrier",),
+            approval_profile=ApprovalBarrierProfile.PER_ACTION,
+        )
+    ).verify_sync(adapter)
+    assert per_action.passed
 
 
 @pytest.mark.integration
