@@ -1,7 +1,7 @@
 # Runtime enforcement
 
-> The runtime API is under development on `main` for AgentBarrier 0.4.0. The 0.3.x package on PyPI
-> contains the deterministic test harness but not this API yet.
+> Runtime enforcement is available in AgentBarrier 0.4.0. The API is pre-1.0 and follows the
+> documented lifecycle and migration contract while it evolves.
 
 AgentBarrier runtime protects a consequential Python function immediately before it crosses the
 effect boundary. An ordered policy allows, denies, or pauses the exact call for approval. SQLite

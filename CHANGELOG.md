@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-20
+
 ### Added
 
 - Ordered runtime policy rules with deterministic allow, deny, and require-approval decisions.
@@ -80,7 +82,8 @@ All notable changes to this project will be documented in this file. The format 
 - Console, JSON, JUnit, and SARIF reports.
 - CLI, pytest fixture, Python 3.10–3.13 support, and strict type checking.
 
-[Unreleased]: https://github.com/binaydhakal/agentbarrier/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/binaydhakal/agentbarrier/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/binaydhakal/agentbarrier/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/binaydhakal/agentbarrier/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/binaydhakal/agentbarrier/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/binaydhakal/agentbarrier/compare/v0.1.0...v0.2.0

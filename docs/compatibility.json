@@ -19,7 +19,7 @@
       ],
       "distribution": {
         "name": "agentbarrier",
-        "version": "0.4.0.dev0"
+        "version": "0.4.0"
       },
       "key": "reference",
       "label": "Reference",
@@ -1335,7 +1335,7 @@
     "name": "agentbarrier",
     "python_implementation": "CPython",
     "python_version": "3.11",
-    "version": "0.4.0.dev0"
+    "version": "0.4.0"
   },
   "profiles": [
     "run-wide",

@@ -1,8 +1,8 @@
 # Runtime API reference
 
-> The runtime API is under development for AgentBarrier 0.4.0 and may change before 1.0. Import
-> public runtime symbols from `agentbarrier.runtime` and runtime exceptions from
-> `agentbarrier.errors`.
+> The runtime API is public in AgentBarrier 0.4.0 and may change before 1.0 with documented release
+> notes and migrations. Import public runtime symbols from `agentbarrier.runtime` and runtime
+> exceptions from `agentbarrier.errors`.
 
 ## Policy
 
