@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentbarrier"
-version = "0.2.0"
+dynamic = ["version"]
 description = "Deterministic approval and side-effect safety tests for AI agents"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -85,6 +85,9 @@ agentbarrier = "agentbarrier.pytest_plugin"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agentbarrier"]
+
+[tool.hatch.version]
+path = "src/agentbarrier/__init__.py"
 
 [tool.pytest.ini_options]
 # Disable this project's installed plugin while testing itself so coverage starts before package

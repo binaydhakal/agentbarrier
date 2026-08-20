@@ -6,6 +6,13 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-08-19
+
+### Fixed
+
+- Package metadata and `agentbarrier --version` now share one version source so published releases
+  cannot report a stale CLI version.
+
 ## [0.2.0] - 2026-08-19
 
 ### Added
@@ -41,6 +48,7 @@ All notable changes to this project will be documented in this file. The format 
 - Console, JSON, JUnit, and SARIF reports.
 - CLI, pytest fixture, Python 3.10–3.13 support, and strict type checking.
 
-[Unreleased]: https://github.com/binaydhakal/agentbarrier/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/binaydhakal/agentbarrier/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/binaydhakal/agentbarrier/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/binaydhakal/agentbarrier/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/binaydhakal/agentbarrier/releases/tag/v0.1.0

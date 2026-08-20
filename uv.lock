@@ -11,7 +11,6 @@ resolution-markers = [
 
 [[package]]
 name = "agentbarrier"
-version = "0.2.0"
 source = { editable = "." }
 
 [package.optional-dependencies]
@@ -65,7 +64,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'test'", specifier = ">=0.11" },
     { name = "twine", marker = "extra == 'test'", specifier = ">=6.1" },
 ]
-provides-extras = ["openai", "langgraph", "pydantic-ai", "google-adk", "autogen", "test", "all"]
+provides-extras = ["all", "autogen", "google-adk", "langgraph", "openai", "pydantic-ai", "test"]
 
 [[package]]
 name = "aiohappyeyeballs"

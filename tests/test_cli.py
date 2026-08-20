@@ -1,11 +1,23 @@
 from __future__ import annotations
 
 import json
+from importlib.metadata import version
 from pathlib import Path
 
 import pytest
 
+from agentbarrier import __version__
 from agentbarrier.cli import main
+
+
+def test_cli_version_matches_distribution_metadata(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert __version__ == version("agentbarrier")
+    with pytest.raises(SystemExit) as exc:
+        main(["--version"])
+    assert exc.value.code == 0
+    assert capsys.readouterr().out.strip() == f"agentbarrier {version('agentbarrier')}"
 
 
 def test_self_test_cli_writes_reports(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
