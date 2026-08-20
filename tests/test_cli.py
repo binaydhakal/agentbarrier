@@ -329,11 +329,11 @@ def test_runtime_database_cli_reports_migrates_and_backs_up(
         "actions": 1,
         "receipt_chain_valid": True,
         "receipts": 1,
-        "schema_version": "2",
+        "schema_version": "3",
     }
 
     assert main(["database", "migrate", "--db", str(path)]) == 0
-    assert "schema version 2" in capsys.readouterr().out
+    assert "schema version 3" in capsys.readouterr().out
 
     backup = tmp_path / "runtime-backup.db"
     assert main(["database", "backup", "--db", str(path), "--output", str(backup)]) == 0

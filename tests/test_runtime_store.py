@@ -219,9 +219,12 @@ def test_store_reconciles_committed_unknown_to_replayable_result(tmp_path: Path)
     clock = Clock()
     with SQLiteRuntimeStore(tmp_path / "runtime.db", clock_ns=clock) as store:
         request = make_request(clock)
-        action = store.submit(
-            request,
-            PolicyDecision(PolicyEffect.ALLOW, "safe", "1"),
+        action = store.submit(request, approval())
+        store.decide(
+            action.action_id,
+            Decision.APPROVE,
+            decided_by="alice",
+            reason="ticket-123",
         )
         store.claim(action.action_id, request_digest=request.request_digest)
         store.mark_unknown(
@@ -239,6 +242,8 @@ def test_store_reconciles_committed_unknown_to_replayable_result(tmp_path: Path)
         )
         assert reconciled.status is RuntimeStatus.SUCCEEDED
         assert reconciled.result == {"status": "refunded"}
+        assert reconciled.decided_by == "alice"
+        assert reconciled.decision_reason == "ticket-123"
         assert (
             store.claim(action.action_id, request_digest=request.request_digest).outcome
             is ClaimOutcome.REPLAY
@@ -267,6 +272,7 @@ def test_store_reconciles_absent_unknown_to_fresh_approval(tmp_path: Path) -> No
         )
         assert reconciled.status is RuntimeStatus.PENDING
         assert reconciled.decided_by is None
+        assert reconciled.approval_ttl_ns == 10_000_000_000
         assert reconciled.expires_at_ns == clock() + 10_000_000_000
         with pytest.raises(ApprovalRequired):
             store.claim(action.action_id, request_digest=request.request_digest)
@@ -468,7 +474,7 @@ def test_store_writes_consistent_non_overwriting_backup(tmp_path: Path) -> None:
     with SQLiteRuntimeStore(path, clock_ns=clock) as store:
         request = make_request(clock)
         store.submit(request, approval())
-        assert store.schema_version == "2"
+        assert store.schema_version == "3"
         assert store.backup(backup_path) == backup_path
 
     assert backup_path.stat().st_mode & 0o777 == 0o600
@@ -537,6 +543,16 @@ def test_store_migrates_v1_and_fails_closed_for_legacy_execution(tmp_path: Path)
         INSERT INTO runtime_actions (
             action_id, namespace, tool_name, arguments_json, idempotency_key,
             request_digest, policy_version, policy_rule, policy_effect, status,
+            created_at_ns, updated_at_ns, expires_at_ns
+        ) VALUES ('pending', 'n', 'tool', '{}', 'pending-key', 'pending-digest', '1',
+                  'review', 'require_approval', 'pending', 1, 1, 11)
+        """
+    )
+    connection.execute(
+        """
+        INSERT INTO runtime_actions (
+            action_id, namespace, tool_name, arguments_json, idempotency_key,
+            request_digest, policy_version, policy_rule, policy_effect, status,
             created_at_ns, updated_at_ns
         ) VALUES ('legacy', 'n', 'tool', '{}', 'key', 'digest', '1', 'allow',
                   'allow', 'executing', 1, 1)
@@ -550,8 +566,10 @@ def test_store_migrates_v1_and_fails_closed_for_legacy_execution(tmp_path: Path)
         action = store.get_action("legacy")
         assert action.status is RuntimeStatus.UNKNOWN
         assert action.error == "ExecutionLeaseExpired"
+        pending = store.get_action("pending")
+        assert pending.approval_ttl_ns == 10
         with sqlite3.connect(path) as migrated:
             metadata = migrated.execute(
                 "SELECT value FROM runtime_metadata WHERE key = 'schema_version'"
             ).fetchone()
-        assert metadata == ("2",)
+        assert metadata == ("3",)

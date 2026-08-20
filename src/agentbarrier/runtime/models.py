@@ -197,6 +197,23 @@ class PolicyDecision:
     policy_version: str
     approval_ttl_seconds: float | None = None
 
+    def __post_init__(self) -> None:
+        if not self.rule_name.strip():
+            raise ValueError("policy decision rule_name must not be empty")
+        if not self.policy_version.strip():
+            raise ValueError("policy decision version must not be empty")
+        if self.approval_ttl_seconds is not None:
+            if (
+                not math.isfinite(self.approval_ttl_seconds)
+                or self.approval_ttl_seconds <= 0
+                or int(self.approval_ttl_seconds * 1_000_000_000) < 1
+            ):
+                raise ValueError("approval_ttl_seconds must be finite and at least one nanosecond")
+            if self.effect is not PolicyEffect.REQUIRE_APPROVAL:
+                raise ValueError(
+                    "approval_ttl_seconds is valid only for require_approval decisions"
+                )
+
 
 @dataclass(frozen=True, slots=True)
 class RuntimeAction:
@@ -215,6 +232,7 @@ class RuntimeAction:
     created_at_ns: int
     updated_at_ns: int
     expires_at_ns: int | None = None
+    approval_ttl_ns: int | None = None
     execution_lease_expires_at_ns: int | None = None
     result: JsonValue = None
     result_available: bool = False

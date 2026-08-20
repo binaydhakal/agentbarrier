@@ -40,7 +40,7 @@ from agentbarrier.runtime.models import (
     detached_json_object,
 )
 
-_SCHEMA_VERSION = "2"
+_SCHEMA_VERSION = "3"
 
 
 class SQLiteRuntimeStore:
@@ -95,7 +95,7 @@ class SQLiteRuntimeStore:
                 previous_version = _SCHEMA_VERSION
             else:
                 previous_version = str(row["value"])
-            if previous_version not in {"1", _SCHEMA_VERSION}:
+            if previous_version not in {"1", "2", _SCHEMA_VERSION}:
                 raise RuntimeError(
                     f"unsupported runtime schema version {previous_version!r}; "
                     f"expected {_SCHEMA_VERSION!r}"
@@ -116,6 +116,7 @@ class SQLiteRuntimeStore:
                     created_at_ns INTEGER NOT NULL,
                     updated_at_ns INTEGER NOT NULL,
                     expires_at_ns INTEGER,
+                    approval_ttl_ns INTEGER,
                     execution_lease_expires_at_ns INTEGER,
                     result_json TEXT,
                     error TEXT,
@@ -125,25 +126,39 @@ class SQLiteRuntimeStore:
                 )
                 """
             )
-            if previous_version == "1":
+            if previous_version in {"1", "2"}:
                 columns = {
                     str(item["name"])
                     for item in self._connection.execute(
                         "PRAGMA table_info(runtime_actions)"
                     ).fetchall()
                 }
-                if "execution_lease_expires_at_ns" not in columns:
+                if previous_version == "1" and "execution_lease_expires_at_ns" not in columns:
                     self._connection.execute(
                         "ALTER TABLE runtime_actions "
                         "ADD COLUMN execution_lease_expires_at_ns INTEGER"
                     )
+                if previous_version == "1":
+                    self._connection.execute(
+                        """
+                        UPDATE runtime_actions
+                        SET execution_lease_expires_at_ns = updated_at_ns
+                        WHERE status = ? AND execution_lease_expires_at_ns IS NULL
+                        """,
+                        (RuntimeStatus.EXECUTING.value,),
+                    )
+                if "approval_ttl_ns" not in columns:
+                    self._connection.execute(
+                        "ALTER TABLE runtime_actions ADD COLUMN approval_ttl_ns INTEGER"
+                    )
                 self._connection.execute(
                     """
                     UPDATE runtime_actions
-                    SET execution_lease_expires_at_ns = updated_at_ns
-                    WHERE status = ? AND execution_lease_expires_at_ns IS NULL
+                    SET approval_ttl_ns = expires_at_ns - created_at_ns
+                    WHERE policy_effect = ? AND expires_at_ns IS NOT NULL
+                        AND expires_at_ns > created_at_ns AND approval_ttl_ns IS NULL
                     """,
-                    (RuntimeStatus.EXECUTING.value,),
+                    (PolicyEffect.REQUIRE_APPROVAL.value,),
                 )
                 self._connection.execute(
                     "UPDATE runtime_metadata SET value = ? WHERE key = 'schema_version'",
@@ -206,12 +221,13 @@ class SQLiteRuntimeStore:
                 PolicyEffect.DENY: RuntimeStatus.DENIED,
                 PolicyEffect.REQUIRE_APPROVAL: RuntimeStatus.PENDING,
             }[decision.effect]
-            expires_at_ns = (
-                now + int(decision.approval_ttl_seconds * 1_000_000_000)
+            approval_ttl_ns = (
+                int(decision.approval_ttl_seconds * 1_000_000_000)
                 if decision.effect is PolicyEffect.REQUIRE_APPROVAL
                 and decision.approval_ttl_seconds is not None
                 else None
             )
+            expires_at_ns = now + approval_ttl_ns if approval_ttl_ns is not None else None
             arguments_json = canonical_json(dict(request.arguments), path="arguments")
             decided_by = "policy" if decision.effect is PolicyEffect.ALLOW else None
             self._connection.execute(
@@ -219,8 +235,8 @@ class SQLiteRuntimeStore:
                 INSERT INTO runtime_actions (
                     action_id, namespace, tool_name, arguments_json, idempotency_key,
                     request_digest, policy_version, policy_rule, policy_effect, status,
-                    created_at_ns, updated_at_ns, expires_at_ns, decided_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    created_at_ns, updated_at_ns, expires_at_ns, approval_ttl_ns, decided_by
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     request.action_id,
@@ -236,6 +252,7 @@ class SQLiteRuntimeStore:
                     request.created_at_ns,
                     now,
                     expires_at_ns,
+                    approval_ttl_ns,
                     decided_by,
                 ),
             )
@@ -462,17 +479,14 @@ class SQLiteRuntimeStore:
             if outcome is RuntimeReconciliation.COMMITTED:
                 status = RuntimeStatus.SUCCEEDED
                 expires_at_ns = None
-                decided_by = resolved_by
-                decision_reason = reason
+                decided_by = action.decided_by
+                decision_reason = action.decision_reason
                 event = RuntimeEvent.RECONCILIATION_COMMITTED
             elif action.policy_effect is PolicyEffect.REQUIRE_APPROVAL:
                 status = RuntimeStatus.PENDING
-                original_ttl_ns = (
-                    action.expires_at_ns - action.created_at_ns
-                    if action.expires_at_ns is not None
-                    else None
+                expires_at_ns = (
+                    now + action.approval_ttl_ns if action.approval_ttl_ns is not None else None
                 )
-                expires_at_ns = now + original_ttl_ns if original_ttl_ns is not None else None
                 decided_by = None
                 decision_reason = None
                 event = RuntimeEvent.RECONCILIATION_NOT_COMMITTED
@@ -770,6 +784,9 @@ class SQLiteRuntimeStore:
             created_at_ns=int(row["created_at_ns"]),
             updated_at_ns=int(row["updated_at_ns"]),
             expires_at_ns=(int(row["expires_at_ns"]) if row["expires_at_ns"] is not None else None),
+            approval_ttl_ns=(
+                int(row["approval_ttl_ns"]) if row["approval_ttl_ns"] is not None else None
+            ),
             execution_lease_expires_at_ns=(
                 int(row["execution_lease_expires_at_ns"])
                 if row["execution_lease_expires_at_ns"] is not None

@@ -60,6 +60,16 @@ def test_runtime_policy_schema_accepts_parser_compatible_policy() -> None:
             "version": "1",
             "rules": [
                 {
+                    "name": "too short TTL",
+                    "effect": "require_approval",
+                    "approval_ttl_seconds": 1e-12,
+                }
+            ],
+        },
+        {
+            "version": "1",
+            "rules": [
+                {
                     "name": "bad TTL owner",
                     "effect": "allow",
                     "approval_ttl_seconds": 10,

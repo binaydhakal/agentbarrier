@@ -423,6 +423,7 @@ def _action_payload(action: RuntimeAction) -> dict[str, object]:
         "created_at_ns": action.created_at_ns,
         "updated_at_ns": action.updated_at_ns,
         "expires_at_ns": action.expires_at_ns,
+        "approval_ttl_ns": action.approval_ttl_ns,
         "execution_lease_expires_at_ns": action.execution_lease_expires_at_ns,
         "result": action.result if action.result_available else None,
         "result_available": action.result_available,

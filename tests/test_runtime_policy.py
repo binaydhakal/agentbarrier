@@ -9,6 +9,7 @@ from agentbarrier.models import JsonValue
 from agentbarrier.runtime import (
     ArgumentCondition,
     ConditionOperator,
+    PolicyDecision,
     PolicyEffect,
     PolicyRule,
     RuntimePolicy,
@@ -242,12 +243,20 @@ def test_policy_rejects_invalid_rule_configuration() -> None:
         )
     with pytest.raises(ValueError, match="only"):
         PolicyRule("allow", PolicyEffect.ALLOW, approval_ttl_seconds=1)
-    with pytest.raises(ValueError, match="greater"):
+    with pytest.raises(ValueError, match="nanosecond"):
         PolicyRule("review", PolicyEffect.REQUIRE_APPROVAL, approval_ttl_seconds=0)
     with pytest.raises(ValueError, match="finite"):
         PolicyRule("review", PolicyEffect.REQUIRE_APPROVAL, approval_ttl_seconds=float("nan"))
     with pytest.raises(ValueError, match="finite"):
         PolicyRule("review", PolicyEffect.REQUIRE_APPROVAL, approval_ttl_seconds=float("inf"))
+    with pytest.raises(ValueError, match="nanosecond"):
+        PolicyRule("review", PolicyEffect.REQUIRE_APPROVAL, approval_ttl_seconds=1e-12)
+    with pytest.raises(ValueError, match="rule_name"):
+        PolicyDecision(PolicyEffect.ALLOW, "", "1")
+    with pytest.raises(ValueError, match="version"):
+        PolicyDecision(PolicyEffect.ALLOW, "allow", "")
+    with pytest.raises(ValueError, match="only"):
+        PolicyDecision(PolicyEffect.ALLOW, "allow", "1", 1)
     with pytest.raises(ValueError, match="path"):
         ArgumentCondition("", ConditionOperator.EQ, 1)
     with pytest.raises(TypeError, match="boolean"):

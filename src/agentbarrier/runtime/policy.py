@@ -139,9 +139,11 @@ class PolicyRule:
         if not self.tool.strip():
             raise ValueError("rule tool pattern must not be empty")
         if self.approval_ttl_seconds is not None and (
-            not math.isfinite(self.approval_ttl_seconds) or self.approval_ttl_seconds <= 0
+            not math.isfinite(self.approval_ttl_seconds)
+            or self.approval_ttl_seconds <= 0
+            or int(self.approval_ttl_seconds * 1_000_000_000) < 1
         ):
-            raise ValueError("approval_ttl_seconds must be finite and greater than zero")
+            raise ValueError("approval_ttl_seconds must be finite and at least one nanosecond")
         if (
             self.effect is not PolicyEffect.REQUIRE_APPROVAL
             and self.approval_ttl_seconds is not None

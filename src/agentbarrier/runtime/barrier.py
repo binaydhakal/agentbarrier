@@ -58,6 +58,8 @@ class RuntimeBarrier:
 
         if not tool_name.strip():
             raise ValueError("tool_name must not be empty")
+        if inspect.isgeneratorfunction(function) or inspect.isasyncgenfunction(function):
+            raise TypeError("generator functions are not supported by the runtime barrier")
         signature = inspect.signature(function)
 
         if inspect.iscoroutinefunction(function):

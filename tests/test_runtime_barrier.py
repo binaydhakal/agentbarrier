@@ -213,3 +213,27 @@ def test_runtime_barrier_rejects_non_json_arguments_and_invalid_configuration(
         )
         with pytest.raises(TypeError, match="unsupported"):
             protected("bad-json", object())
+
+
+def test_runtime_barrier_rejects_generator_functions_before_submission(tmp_path: Path) -> None:
+    def generator_tool(request_id: str):
+        yield {"request_id": request_id}
+
+    async def async_generator_tool(request_id: str):
+        yield {"request_id": request_id}
+
+    with SQLiteRuntimeStore(tmp_path / "runtime.db") as store:
+        barrier = RuntimeBarrier(policy=make_policy(), store=store)
+        with pytest.raises(TypeError, match="generator"):
+            barrier.protect(
+                generator_tool,
+                tool_name="payments.refund",
+                idempotency_key="request_id",
+            )
+        with pytest.raises(TypeError, match="generator"):
+            barrier.protect(
+                async_generator_tool,
+                tool_name="payments.refund",
+                idempotency_key="request_id",
+            )
+        assert store.list_actions() == ()
