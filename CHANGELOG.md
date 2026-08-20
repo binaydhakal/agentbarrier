@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-20
+
 ### Added
 
 - Explicit `run-wide` and `per-action` approval-barrier profiles across the Python API, CLI,
@@ -18,7 +20,8 @@ All notable changes to this project will be documented in this file. The format 
   operation identity, response-loss reconciliation, and final balance assertions.
 - Credential-free CrewAI adapter evaluation using its real pre-tool hook for approval, rejection,
   argument binding, and per-action parallel behavior, with isolated compatibility evidence for
-  the upstream OpenAI SDK dependency conflict.
+  the upstream OpenAI SDK dependency conflict and temporary framework storage that leaves user
+  tracing preferences untouched.
 
 ## [0.2.1] - 2026-08-19
 
@@ -62,7 +65,8 @@ All notable changes to this project will be documented in this file. The format 
 - Console, JSON, JUnit, and SARIF reports.
 - CLI, pytest fixture, Python 3.10–3.13 support, and strict type checking.
 
-[Unreleased]: https://github.com/binaydhakal/agentbarrier/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/binaydhakal/agentbarrier/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/binaydhakal/agentbarrier/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/binaydhakal/agentbarrier/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/binaydhakal/agentbarrier/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/binaydhakal/agentbarrier/releases/tag/v0.1.0

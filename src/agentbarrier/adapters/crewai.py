@@ -10,6 +10,7 @@ import threading
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from importlib.metadata import PackageNotFoundError, version
+from tempfile import TemporaryDirectory
 from typing import Any
 
 from agentbarrier.adapter import (
@@ -149,7 +150,10 @@ class _CrewAIRun(RunHandle):
         return RunOutcome(RunStatus.COMPLETED)
 
     def _run_crewai(self) -> None:
-        with _telemetry_disabled():
+        with (
+            TemporaryDirectory(prefix="agentbarrier-crewai-") as storage_directory,
+            _telemetry_disabled(storage_directory=storage_directory),
+        ):
             sdk = _load_sdk()
             run = self
             base_tool = sdk["BaseTool"]
@@ -418,11 +422,17 @@ def _tool_arguments(tool_input: dict[str, Any]) -> dict[str, JsonValue]:
 
 
 @contextmanager
-def _telemetry_disabled() -> Iterator[None]:
+def _telemetry_disabled(*, storage_directory: str | None = None) -> Iterator[None]:
     with _TELEMETRY_LOCK:
-        names = ("OTEL_SDK_DISABLED", "CREWAI_DISABLE_TELEMETRY")
+        values = {
+            "OTEL_SDK_DISABLED": "true",
+            "CREWAI_DISABLE_TELEMETRY": "true",
+        }
+        if storage_directory is not None:
+            values["CREWAI_STORAGE_DIR"] = storage_directory
+        names = tuple(values)
         previous = {name: os.environ.get(name) for name in names}
-        os.environ.update({name: "true" for name in names})
+        os.environ.update(values)
         try:
             yield
         finally:

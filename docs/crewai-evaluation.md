@@ -6,7 +6,7 @@ kept separate from the main compatibility artifact because CrewAI 1.15.17 requir
 cannot be installed into one Python environment.
 
 <!-- agentbarrier:compatibility:start -->
-Canonical evidence: Python 3.11 · AgentBarrier 0.3.0.dev0 · `run-wide` profile
+Canonical evidence: Python 3.11 · AgentBarrier 0.3.0 · `run-wide` profile
 
 | Adapter | Version | Approval | Rejection | Args | Replay | Unknown | Reconcile | Cancel | Timeout | Parallel | Delegation | Audit |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -31,7 +31,9 @@ dictionary in place before CrewAI invokes the tool. This is the actual framework
 parallel simulation outside CrewAI.
 
 The probe temporarily sets CrewAI's two documented telemetry-disable environment variables and
-restores their prior values after every run. Tests also verify the adapter without model
+uses an isolated temporary CrewAI storage directory. It restores every prior environment value
+after each native run, so the evaluation neither requires a writable user data directory nor
+changes the user's CrewAI tracing preference. Tests also verify the adapter without model
 credentials.
 
 On Python 3.10, the extra constrains `onnxruntime` below 1.24 because 1.24 no longer publishes a

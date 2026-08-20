@@ -34,9 +34,11 @@ def test_crewai_adapter_exercises_real_hook_lifecycle_without_credentials(
     pytest.importorskip("crewai", reason="CrewAI optional dependency is not installed")
     monkeypatch.setenv("OTEL_SDK_DISABLED", "false")
     monkeypatch.setenv("CREWAI_DISABLE_TELEMETRY", "false")
+    monkeypatch.setenv("CREWAI_STORAGE_DIR", "/path/that/must/not/be-used")
     before = {
         "OTEL_SDK_DISABLED": os.environ.get("OTEL_SDK_DISABLED"),
         "CREWAI_DISABLE_TELEMETRY": os.environ.get("CREWAI_DISABLE_TELEMETRY"),
+        "CREWAI_STORAGE_DIR": os.environ.get("CREWAI_STORAGE_DIR"),
     }
     adapter = CrewAIAdapter()
     suite = SuiteRunner(
@@ -85,6 +87,7 @@ def test_crewai_adapter_exercises_real_hook_lifecycle_without_credentials(
     assert per_action.passed
     assert os.environ.get("OTEL_SDK_DISABLED") == before["OTEL_SDK_DISABLED"]
     assert os.environ.get("CREWAI_DISABLE_TELEMETRY") == before["CREWAI_DISABLE_TELEMETRY"]
+    assert os.environ.get("CREWAI_STORAGE_DIR") == before["CREWAI_STORAGE_DIR"]
 
 
 @pytest.mark.integration
