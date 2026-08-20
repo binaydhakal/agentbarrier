@@ -20,6 +20,10 @@ All notable changes to this project will be documented in this file. The format 
   pagination, security headers, request-size limits, and a generated OpenAPI 3.1 document.
 - Optional `service` dependency group, safe-loopback `agentbarrier api` runner, and hidden-prompt or
   environment-based `agentbarrier auth hash-token` setup command.
+- Durable signed runtime webhooks with strict environment-backed secrets, event filters, automatic
+  and configured argument redaction, canonical CloudEvents-shaped bodies, HMAC-SHA256 verification,
+  transactional outbox checkpoints, crash-safe claims, bounded retries, dead-letter status, and
+  exact operator-triggered recovery commands.
 
 ## [0.4.0] - 2026-08-20
 

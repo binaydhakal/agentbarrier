@@ -56,8 +56,8 @@ Deliverables:
 - runtime adapters for the supported agent frameworks where the real tool boundary is available;
 - protocol-level conformance fixtures that do not require model credentials.
 
-The development branch now has the transport-neutral runtime boundary, MCP tool gateway, and
-scoped approval API foundation. Raw transport conformance, outbound webhooks, framework runtime
+The development branch now has the transport-neutral runtime boundary, MCP tool gateway, scoped
+approval API, and durable signed webhook worker. Raw transport conformance, framework runtime
 adapters, and clean-wheel audits remain release gates.
 
 Release gates:

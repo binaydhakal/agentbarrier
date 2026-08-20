@@ -38,7 +38,8 @@ The [runtime API reference](https://github.com/binaydhakal/agentbarrier/blob/mai
 documents the public classes, lifecycle, and failure contract.
 The main branch is developing 0.5.0, which adds a deployable
 [MCP policy gateway](https://github.com/binaydhakal/agentbarrier/blob/main/docs/mcp-gateway.md)
-using the current MCP 2026-07-28 protocol through its official Python SDK.
+using the current MCP 2026-07-28 protocol through its official Python SDK, an authenticated
+approval API, and [durable signed webhooks](docs/webhooks.md) for approval and operations systems.
 
 > **Status:** early development. The public adapter contract is usable, but compatibility should
 > be pinned until the first stable release.
@@ -49,6 +50,8 @@ using the current MCP 2026-07-28 protocol through its official Python SDK.
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/mcp-gateway.md">MCP gateway</a>
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/approval-api.md">Approval API</a>
+  ·
+  <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/webhooks.md">Webhooks</a>
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/compatibility.md">Compatibility</a>
   ·
@@ -110,6 +113,11 @@ security boundary, and current development limitations.
 The same runtime database can be reviewed from the development authenticated HTTP service. It uses
 scoped bearer identities, takes the reviewer name from authentication rather than request data, and
 serves an OpenAPI 3.1 contract. See the [approval API guide](docs/approval-api.md).
+
+Durable outbound webhooks can notify a separate approval UI, queue, SIEM, or incident workflow.
+They use HMAC-SHA256 signatures, automatic and configured secret redaction, bounded retries,
+crash-safe claims, stable event IDs, and explicit dead-letter recovery. See the
+[signed webhook guide](docs/webhooks.md).
 
 ## See a real control failure
 

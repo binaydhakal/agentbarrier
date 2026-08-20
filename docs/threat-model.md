@@ -1,9 +1,11 @@
 # Threat model
 
-AgentBarrier has three related boundaries. The test harness finds lifecycle-control failures using
-harmless sentinel effects. The Python runtime layer enforces deterministic policy immediately
-before a real function crosses a consequential effect boundary. The MCP gateway applies the same
-runtime boundary before forwarding a tool call to an upstream server.
+AgentBarrier has related test, enforcement, protocol, review, and notification boundaries. The test
+harness finds lifecycle-control failures using harmless sentinel effects. The Python runtime layer
+enforces deterministic policy immediately before a real function crosses a consequential effect
+boundary. The MCP gateway applies the same runtime boundary before forwarding a tool call to an
+upstream server. The approval API binds decisions to authenticated reviewers, and signed webhooks
+export redacted runtime events to external systems.
 
 ## Security goals
 
@@ -41,6 +43,12 @@ For the approval API, the static auth file, entropy of the original bearer token
 local ingress, and service operator are trusted. Only token SHA-256 values are stored in the auth
 file. Because an unsalted digest does not protect a weak token from offline guessing, operators must
 generate high-entropy random tokens and protect the digest file as credential material.
+
+For outbound webhooks, endpoint configuration, environment-provided signing secrets, worker network
+access, system time, HTTP client, and receiver verification are trusted. Endpoint URLs are operator
+configuration and can reach the worker's network; they must not be derived from model output. A
+valid signature proves possession of the configured shared secret, not that the receiver will apply
+an event safely or exactly once.
 
 An application result is meaningful only when the sentinel replaces the production tool at the
 same complete-mediation boundary. Replacing a tool earlier tests planning but can miss a later
@@ -90,6 +98,16 @@ command, URL, API token, or network route remains available to the agent.
 - The API uses bearer headers rather than cookies, emits no permissive cross-origin headers, limits
   decision bodies, and returns no-store responses. It still requires TLS or a trusted local reverse
   proxy whenever traffic leaves loopback.
+- Webhook bodies automatically redact common credential-shaped argument keys and configured dotted
+  paths, omit business idempotency keys and execution results, and are signed over exact bytes.
+  Application-specific sensitive paths remain an operator responsibility; receipt actors and
+  details are audit data and must not contain secrets.
+- Webhook delivery is at least once. Stable event IDs support receiver deduplication when a response
+  is lost after acceptance. Bounded retries become dead letters, and only an explicit exact
+  endpoint/event command grants a new bounded attempt budget.
+- HTTPS is required off loopback and redirects are disabled, but a trusted operator can still
+  configure an internal or sensitive network target. Isolate worker egress and allow-list receiver
+  destinations where the deployment requires SSRF resistance.
 
 ## Out of scope
 
@@ -106,6 +124,7 @@ AgentBarrier does not:
 - stop an MCP client that can bypass the gateway and call the upstream server directly;
 - authenticate public MCP clients in the current 0.5.0 development slice;
 - provide an identity provider, token rotation service, or TLS termination for the approval API;
+- make an external webhook receiver trustworthy, available, or exactly once;
 - invent a reliable business idempotency key from a JSON-RPC request ID;
 - secure, sign, encrypt, replicate, or retain the SQLite database and its backups;
 - authenticate CLI reviewer names or provide multi-user authorization in 0.4;

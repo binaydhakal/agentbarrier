@@ -13,6 +13,7 @@ from agentbarrier.runtime import PolicyDecision, PolicyEffect, RuntimeRequest, R
 from agentbarrier.runtime.store import SQLiteRuntimeStore
 from agentbarrier.service import runner as service_runner
 from agentbarrier.service.auth import hash_bearer_token
+from agentbarrier.service.webhooks import WebhookDeliverySnapshot
 
 
 def test_cli_version_matches_distribution_metadata(
@@ -486,3 +487,156 @@ def test_runtime_database_cli_rejects_missing_source(tmp_path: Path, command: st
         main(arguments)
     assert exc.value.code == 2
     assert not (tmp_path / "missing.db").exists()
+
+
+def test_webhook_run_cli_passes_operational_configuration(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    captured: list[dict[str, object]] = []
+
+    def run_webhook_worker(**values: object) -> dict[str, int]:
+        captured.append(values)
+        return {"enqueued": 2, "delivered": 1, "retried": 1, "dead": 0}
+
+    monkeypatch.setattr(service_runner, "run_webhook_worker", run_webhook_worker)
+    database = tmp_path / "runtime.db"
+    state_database = tmp_path / "webhooks.db"
+    config = tmp_path / "webhooks.json"
+    assert (
+        main(
+            [
+                "webhooks",
+                "run",
+                "--db",
+                str(database),
+                "--state-db",
+                str(state_database),
+                "--config",
+                str(config),
+                "--once",
+                "--poll-interval",
+                "0.25",
+            ]
+        )
+        == 0
+    )
+    assert captured == [
+        {
+            "database_path": str(database),
+            "state_path": str(state_database),
+            "config_path": str(config),
+            "once": True,
+            "poll_interval_seconds": 0.25,
+        }
+    ]
+    assert json.loads(capsys.readouterr().out) == {
+        "dead": 0,
+        "delivered": 1,
+        "enqueued": 2,
+        "retried": 1,
+    }
+
+
+def test_webhook_status_cli_omits_payloads_and_secrets(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    snapshot = WebhookDeliverySnapshot(
+        delivery_id="delivery-1",
+        endpoint_id="operations",
+        receipt_sequence=4,
+        event_id="runtime-receipt-4",
+        event_type="approved",
+        status="delivered",
+        attempts=1,
+        next_attempt_at_ns=10,
+        last_status_code=204,
+        last_error=None,
+        delivered_at_ns=20,
+    )
+    monkeypatch.setattr(
+        service_runner,
+        "webhook_delivery_status",
+        lambda _path: (snapshot,),
+    )
+
+    state_database = tmp_path / "webhooks.db"
+    assert main(["webhooks", "status", "--state-db", str(state_database), "--json"]) == 0
+    output = capsys.readouterr().out
+    payload = json.loads(output)
+    assert payload == [
+        {
+            "attempts": 1,
+            "delivered_at_ns": 20,
+            "delivery_id": "delivery-1",
+            "endpoint_id": "operations",
+            "event_id": "runtime-receipt-4",
+            "event_type": "approved",
+            "last_error": None,
+            "last_status_code": 204,
+            "next_attempt_at_ns": 10,
+            "receipt_sequence": 4,
+            "status": "delivered",
+        }
+    ]
+    assert "secret" not in output.lower()
+
+
+def test_webhook_retry_cli_requires_exact_dead_delivery(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    snapshot = WebhookDeliverySnapshot(
+        delivery_id="delivery-1",
+        endpoint_id="operations",
+        receipt_sequence=4,
+        event_id="runtime-receipt-4",
+        event_type="approved",
+        status="pending",
+        attempts=0,
+        next_attempt_at_ns=30,
+        last_status_code=503,
+        last_error="HTTPError",
+        delivered_at_ns=None,
+    )
+    captured: list[tuple[str, str, str]] = []
+
+    def retry_webhook_delivery(
+        path: str,
+        *,
+        endpoint_id: str,
+        event_id: str,
+    ) -> WebhookDeliverySnapshot:
+        captured.append((path, endpoint_id, event_id))
+        return snapshot
+
+    monkeypatch.setattr(service_runner, "retry_webhook_delivery", retry_webhook_delivery)
+    state_database = tmp_path / "webhooks.db"
+    assert (
+        main(
+            [
+                "webhooks",
+                "retry",
+                "runtime-receipt-4",
+                "--endpoint",
+                "operations",
+                "--state-db",
+                str(state_database),
+            ]
+        )
+        == 0
+    )
+    assert captured == [(str(state_database), "operations", "runtime-receipt-4")]
+    assert "requeued runtime-receipt-4 for endpoint operations" in capsys.readouterr().out
+
+
+def test_webhook_status_cli_rejects_missing_state_database(tmp_path: Path) -> None:
+    missing = tmp_path / "missing-webhooks.db"
+    with pytest.raises(SystemExit) as exc:
+        main(["webhooks", "status", "--state-db", str(missing)])
+    assert exc.value.code == 2
+    assert not missing.exists()

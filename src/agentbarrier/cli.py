@@ -215,6 +215,44 @@ def build_parser() -> argparse.ArgumentParser:
         help="read the token from this environment variable instead of a hidden prompt",
     )
     hash_token.set_defaults(handler=_run_hash_token)
+
+    webhooks = commands.add_parser("webhooks", help="deliver signed runtime audit webhooks")
+    webhook_commands = webhooks.add_subparsers(dest="webhook_command", required=True)
+    webhook_run = webhook_commands.add_parser("run", help="run the durable webhook worker")
+    _add_runtime_db_option(webhook_run)
+    webhook_run.add_argument(
+        "--state-db",
+        required=True,
+        metavar="PATH",
+        help="separate durable webhook delivery database",
+    )
+    webhook_run.add_argument("--config", required=True, metavar="PATH", help="webhook config JSON")
+    webhook_run.add_argument("--once", action="store_true", help="process currently due work once")
+    webhook_run.add_argument(
+        "--poll-interval",
+        type=float,
+        default=1.0,
+        metavar="SECONDS",
+        help="continuous worker polling interval (default: 1)",
+    )
+    webhook_run.set_defaults(handler=_run_webhook_worker)
+
+    webhook_status = webhook_commands.add_parser(
+        "status",
+        help="inspect durable webhook delivery state",
+    )
+    webhook_status.add_argument("--state-db", required=True, metavar="PATH")
+    webhook_status.add_argument("--json", action="store_true", help="write JSON to stdout")
+    webhook_status.set_defaults(handler=_run_webhook_status)
+
+    webhook_retry = webhook_commands.add_parser(
+        "retry",
+        help="requeue one exact dead webhook delivery",
+    )
+    webhook_retry.add_argument("event_id", help="stable webhook event id")
+    webhook_retry.add_argument("--endpoint", required=True, help="configured endpoint id")
+    webhook_retry.add_argument("--state-db", required=True, metavar="PATH")
+    webhook_retry.set_defaults(handler=_run_webhook_retry)
     return parser
 
 
@@ -538,6 +576,80 @@ def _run_hash_token(arguments: argparse.Namespace) -> int:
     else:
         token = getpass.getpass("Bearer token: ")
     print(hash_bearer_token(token))
+    return 0
+
+
+def _run_webhook_worker(arguments: argparse.Namespace) -> int:
+    try:
+        from agentbarrier.service.runner import run_webhook_worker
+    except ImportError as error:
+        raise ImportError(
+            "webhook dependencies are unavailable; install 'agentbarrier[service]'"
+        ) from error
+    counts = run_webhook_worker(
+        database_path=cast(str, arguments.db),
+        state_path=cast(str, arguments.state_db),
+        config_path=cast(str, arguments.config),
+        once=cast(bool, arguments.once),
+        poll_interval_seconds=cast(float, arguments.poll_interval),
+    )
+    if counts is not None:
+        print(json.dumps(counts, sort_keys=True))
+    return 0
+
+
+def _run_webhook_status(arguments: argparse.Namespace) -> int:
+    try:
+        from agentbarrier.service.runner import webhook_delivery_status
+    except ImportError as error:
+        raise ImportError(
+            "webhook dependencies are unavailable; install 'agentbarrier[service]'"
+        ) from error
+    snapshots = webhook_delivery_status(cast(str, arguments.state_db))
+    payload = [
+        {
+            "delivery_id": item.delivery_id,
+            "endpoint_id": item.endpoint_id,
+            "receipt_sequence": item.receipt_sequence,
+            "event_id": item.event_id,
+            "event_type": item.event_type,
+            "status": item.status,
+            "attempts": item.attempts,
+            "next_attempt_at_ns": item.next_attempt_at_ns,
+            "last_status_code": item.last_status_code,
+            "last_error": item.last_error,
+            "delivered_at_ns": item.delivered_at_ns,
+        }
+        for item in snapshots
+    ]
+    if arguments.json:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+    if not payload:
+        print("No webhook deliveries found.")
+        return 0
+    print(f"{'EVENT ID':24}  {'ENDPOINT':20}  {'STATUS':10}  ATTEMPTS")
+    for item in payload:
+        print(
+            f"{item['event_id']:24}  {item['endpoint_id']:20}  "
+            f"{item['status']:10}  {item['attempts']}"
+        )
+    return 0
+
+
+def _run_webhook_retry(arguments: argparse.Namespace) -> int:
+    try:
+        from agentbarrier.service.runner import retry_webhook_delivery
+    except ImportError as error:
+        raise ImportError(
+            "webhook dependencies are unavailable; install 'agentbarrier[service]'"
+        ) from error
+    delivery = retry_webhook_delivery(
+        cast(str, arguments.state_db),
+        endpoint_id=cast(str, arguments.endpoint),
+        event_id=cast(str, arguments.event_id),
+    )
+    print(f"requeued {delivery.event_id} for endpoint {delivery.endpoint_id}")
     return 0
 
 
