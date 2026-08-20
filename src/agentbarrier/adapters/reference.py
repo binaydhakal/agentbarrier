@@ -13,6 +13,8 @@ from agentbarrier.models import (
     AuditReceipt,
     Capability,
     Decision,
+    ReconciliationEvidence,
+    ReconciliationStatus,
     RunOutcome,
     RunStatus,
     action_digest,
@@ -67,6 +69,7 @@ class _ReferenceRun(RunHandle):
         self._pending = tuple(action for action in actions if action.requires_approval)
         self._pending_ready = asyncio.Event()
         self._decisions: dict[str, asyncio.Future[_DecisionValue]] = {}
+        self._reconciliations: dict[str, ReconciliationEvidence] = {}
         self._terminal: RunOutcome | None = None
         self._effect.journal.record_receipt(run_id=run_id, event=AuditEvent.RUN_STARTED)
         self._task = asyncio.create_task(self._drive(), name=f"agentbarrier:{run_id}")
@@ -216,6 +219,67 @@ class _ReferenceRun(RunHandle):
             return await asyncio.wait_for(asyncio.shield(self._task), timeout=timeout_seconds)
         except asyncio.TimeoutError:
             return RunOutcome(RunStatus.FAILED, "run did not reach a terminal state in time")
+
+    async def reconcile(
+        self,
+        action_id: str,
+        timeout_seconds: float,
+    ) -> ReconciliationEvidence:
+        cached = self._reconciliations.get(action_id)
+        if cached is not None:
+            return cached
+        if not self._task.done() or self._terminal is None:
+            raise AdapterContractError("cannot reconcile before the run reaches a terminal state")
+        if self._terminal.status is not RunStatus.UNKNOWN:
+            raise AdapterContractError("only an unknown run outcome can be reconciled")
+        action = next((item for item in self._actions if item.action_id == action_id), None)
+        if action is None:
+            raise AdapterContractError(f"{action_id!r} does not identify an action in this run")
+        bounded_timeout = validate_timeout(timeout_seconds)
+        if bounded_timeout is None:  # pragma: no cover - the public argument is not optional
+            raise AdapterContractError("reconciliation timeout is required")
+
+        expected_digest = action_digest(action)
+        self._record_action_event(AuditEvent.RECONCILIATION_STARTED, action)
+        try:
+            evidence = await asyncio.wait_for(
+                self._effect.reconcile(action),
+                timeout=bounded_timeout,
+            )
+        except asyncio.TimeoutError:
+            evidence = ReconciliationEvidence(
+                action_id=action.action_id,
+                status=ReconciliationStatus.UNAVAILABLE,
+                expected_action_digest=expected_digest,
+                detail=f"reconciliation timed out after {bounded_timeout:g} seconds",
+            )
+            event = AuditEvent.RECONCILIATION_TIMED_OUT
+        else:
+            if (
+                evidence.action_id != action.action_id
+                or evidence.expected_action_digest != expected_digest
+            ):
+                evidence = ReconciliationEvidence(
+                    action_id=action.action_id,
+                    status=ReconciliationStatus.CONFLICT,
+                    expected_action_digest=expected_digest,
+                    observed_action_digests=evidence.observed_action_digests,
+                    detail="reconciliation evidence was bound to a different action identity",
+                )
+            event = {
+                ReconciliationStatus.COMMITTED: AuditEvent.RECONCILIATION_COMMITTED,
+                ReconciliationStatus.NOT_COMMITTED: AuditEvent.RECONCILIATION_NOT_COMMITTED,
+                ReconciliationStatus.CONFLICT: AuditEvent.RECONCILIATION_CONFLICT,
+                ReconciliationStatus.UNAVAILABLE: AuditEvent.RECONCILIATION_UNAVAILABLE,
+            }[evidence.status]
+
+        if evidence.status is ReconciliationStatus.COMMITTED:
+            self._adapter._completed.add((self._run_id, action.action_id))
+        elif evidence.status is ReconciliationStatus.NOT_COMMITTED:
+            self._adapter._completed.discard((self._run_id, action.action_id))
+        self._reconciliations[action.action_id] = evidence
+        self._record_action_event(event, action, detail=evidence.detail)
+        return evidence
 
     async def replay(self) -> RunHandle:
         if not self._task.done():

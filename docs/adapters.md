@@ -22,12 +22,27 @@ assertions. The adapter owns only lifecycle orchestration.
 - execute replacement arguments when `approve(..., replacement=...)` is supported;
 - make `cancel()` terminal for the logical run;
 - normalize terminal state through `wait()`;
+- return bounded, identity-bound evidence from `reconcile()` when outcome reconciliation is
+  declared;
 - preserve action identity through `replay()`;
 - return durable, ordered decision evidence from `audit_receipts()` when declared; and
 - release background tasks from `close()`.
 
 Only declare capabilities that the implementation can exercise. Missing capabilities are visible
 as skips and become failures when callers select `strict_skips`.
+
+## Outcome reconciliation
+
+`outcome_reconciliation` is additive to the existing `outcome_ambiguity` contract. The existing
+capability still verifies that a lost post-commit response becomes `UNKNOWN` and that stable replay
+identity prevents duplication. Adapters declaring the stronger reconciliation capability must
+also implement `RunHandle.reconcile(action_id, timeout_seconds)`.
+
+The lookup must use the exact stable action or idempotency identity and return `COMMITTED`,
+`NOT_COMMITTED`, `CONFLICT`, or `UNAVAILABLE` evidence. Only `NOT_COMMITTED` authorizes an effect
+attempt; `COMMITTED` is terminal, while conflicting or unavailable evidence must preserve the
+unknown outcome for recovery. Every lookup is bounded and emits identity-bound start and terminal
+audit receipts.
 
 ## Approval-barrier profiles
 

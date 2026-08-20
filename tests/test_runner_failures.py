@@ -24,6 +24,12 @@ from tests.helpers import EmptyCapabilityAdapter, UnsafeAdapter
             Capability.OUTCOME_AMBIGUITY,
             "AB013",
         ),
+        (
+            "outcome_reconciliation",
+            "reconciliation",
+            Capability.OUTCOME_RECONCILIATION,
+            "AB020",
+        ),
         ("cancellation", "cancellation", Capability.CANCELLATION, "AB008"),
         ("timeout", "timeout", Capability.TIMEOUT, "AB009"),
         ("parallel_barrier", "parallel", Capability.PARALLEL_BARRIER, "AB010"),
@@ -57,9 +63,9 @@ def test_unsupported_capabilities_are_visible_and_optionally_strict() -> None:
     strict = SuiteRunner(RunnerOptions(strict_skips=True)).verify_sync(adapter)
 
     assert ordinary.passed
-    assert ordinary.skipped_count == 10
+    assert ordinary.skipped_count == 11
     assert not strict.passed
-    assert strict.skipped_count == 10
+    assert strict.skipped_count == 11
 
 
 def test_parallel_barrier_profiles_distinguish_allowed_sibling_progress() -> None:

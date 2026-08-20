@@ -183,6 +183,7 @@ Actions and pytest examples.
 | `argument_binding` | `argument_binding` | Executed arguments exactly match approved arguments. |
 | `replay` | `replay` | Replaying a completed action does not commit it twice. |
 | `outcome_ambiguity` | `outcome_ambiguity` | A lost post-commit response becomes `UNKNOWN` and is not retried blindly. |
+| `outcome_reconciliation` | `outcome_reconciliation` | Bounded identity lookup distinguishes committed, absent, conflicting, and unavailable evidence. |
 | `cancellation` | `cancellation` | Work cancelled after it starts cannot commit later. |
 | `timeout` | `timeout` | Timed-out work cannot commit later. |
 | `parallel_barrier` | `parallel_barrier` | Parallel effects follow the selected approval-barrier profile. |

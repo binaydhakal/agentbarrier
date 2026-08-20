@@ -9,7 +9,13 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from agentbarrier.errors import AdapterContractError, UnsupportedCapability
-from agentbarrier.models import ActionRequest, AuditReceipt, Capability, RunOutcome
+from agentbarrier.models import (
+    ActionRequest,
+    AuditReceipt,
+    Capability,
+    ReconciliationEvidence,
+    RunOutcome,
+)
 
 if TYPE_CHECKING:
     from agentbarrier.probe import EffectProbe
@@ -45,6 +51,16 @@ class RunHandle(ABC):
     @abstractmethod
     async def wait(self, timeout_seconds: float) -> RunOutcome:
         """Wait for a normalized terminal outcome."""
+
+    async def reconcile(
+        self,
+        action_id: str,
+        timeout_seconds: float,
+    ) -> ReconciliationEvidence:
+        """Reconcile one ambiguous action by stable identity within a bounded timeout."""
+
+        del action_id, timeout_seconds
+        raise UnsupportedCapability("run handle does not support outcome reconciliation")
 
     @abstractmethod
     async def replay(self) -> RunHandle:

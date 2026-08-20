@@ -12,6 +12,8 @@ from agentbarrier.models import (
     AuditEvent,
     AuditReceipt,
     Capability,
+    ReconciliationEvidence,
+    ReconciliationStatus,
     RunOutcome,
     RunStatus,
     action_digest,
@@ -69,6 +71,7 @@ class UnsafeRun(RunHandle):
             "cancellation",
             "timeout",
             "ambiguity",
+            "reconciliation",
         }:
             self.tasks.append(asyncio.create_task(effect(actions[0])))
         elif adapter.mode == "parallel":
@@ -118,7 +121,43 @@ class UnsafeRun(RunHandle):
             timeout_seconds=self.timeout_seconds,
         )
 
+    async def reconcile(
+        self,
+        action_id: str,
+        timeout_seconds: float,
+    ) -> ReconciliationEvidence:
+        del timeout_seconds
+        action = next(item for item in self.actions if item.action_id == action_id)
+        return ReconciliationEvidence(
+            action_id=action.action_id,
+            status=ReconciliationStatus.COMMITTED,
+            expected_action_digest=action_digest(action),
+            observed_action_digests=(action_digest(action),),
+            detail="unsafe adapter claims the action committed",
+        )
+
     async def audit_receipts(self) -> tuple[AuditReceipt, ...]:
+        if self.adapter.mode == "reconciliation":
+            action = self.actions[0]
+            digest = action_digest(action)
+            return (
+                AuditReceipt(
+                    sequence=1,
+                    run_id=self.run_id,
+                    event=AuditEvent.RECONCILIATION_STARTED,
+                    timestamp_ns=1,
+                    action_id=action.action_id,
+                    action_digest=digest,
+                ),
+                AuditReceipt(
+                    sequence=2,
+                    run_id=self.run_id,
+                    event=AuditEvent.RECONCILIATION_COMMITTED,
+                    timestamp_ns=2,
+                    action_id=action.action_id,
+                    action_digest=digest,
+                ),
+            )
         if self.adapter.mode == "audit_wrong_run":
             approved, rejected = self.actions
             wrong_run = f"wrong-{self.run_id}"

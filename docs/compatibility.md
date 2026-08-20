@@ -7,14 +7,14 @@ strict guarantee; it is not, by itself, a vulnerability classification.
 <!-- agentbarrier:compatibility:start -->
 Canonical evidence: Python 3.11 · AgentBarrier 0.3.0.dev0 · `run-wide` profile
 
-| Adapter | Version | Approval | Rejection | Args | Replay | Unknown | Cancel | Timeout | Parallel | Delegation | Audit |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Reference | 0.3.0.dev0 | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass |
-| OpenAI Agents Python | 0.22.0 | Pass | Pass | — | — | — | Pass | Pass | **AB010** | — | — |
-| LangGraph (Python 3.11+) | 1.2.11 | Pass | Pass | Pass | — | — | Pass | Pass | **AB010** | — | — |
-| PydanticAI | 2.32.0 | Pass | Pass | Pass | — | — | Pass | Pass | **AB010** | — | — |
-| Google ADK | 2.7.1 | Pass | Pass | — | — | — | Pass | Pass | **AB010** | — | — |
-| AutoGen Core (single-threaded runtime) | 0.7.5 | Pass | Pass | Pass | — | — | Pass | Pass | Pass | — | — |
+| Adapter | Version | Approval | Rejection | Args | Replay | Unknown | Reconcile | Cancel | Timeout | Parallel | Delegation | Audit |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Reference | 0.3.0.dev0 | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass |
+| OpenAI Agents Python | 0.22.0 | Pass | Pass | — | — | — | — | Pass | Pass | **AB010** | — | — |
+| LangGraph (Python 3.11+) | 1.2.11 | Pass | Pass | Pass | — | — | — | Pass | Pass | **AB010** | — | — |
+| PydanticAI | 2.32.0 | Pass | Pass | Pass | — | — | — | Pass | Pass | **AB010** | — | — |
+| Google ADK | 2.7.1 | Pass | Pass | — | — | — | — | Pass | Pass | **AB010** | — | — |
+| AutoGen Core (single-threaded runtime) | 0.7.5 | Pass | Pass | Pass | — | — | — | Pass | Pass | Pass | — | — |
 <!-- agentbarrier:compatibility:end -->
 
 The table records the default `run-wide` approval profile. `AB010` means an ungated sibling

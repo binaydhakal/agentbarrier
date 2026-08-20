@@ -32,7 +32,7 @@ def test_all_report_formats_are_well_formed(tmp_path: Path) -> None:
     sarif = json.loads(sarif_path.read_text())
     assert json_report["schema_version"] == "1.1"
     assert json_report["approval_profile"] == "run-wide"
-    assert json_report["summary"]["passed"] == 10
+    assert json_report["summary"]["passed"] == 11
     assert junit.tag == "testsuites"
     junit_property = junit.find("./testsuite/properties/property")
     assert junit_property is not None
@@ -43,7 +43,7 @@ def test_all_report_formats_are_well_formed(tmp_path: Path) -> None:
     assert sarif["version"] == "2.1.0"
     assert sarif["runs"][0]["properties"]["approvalProfile"] == "run-wide"
     assert sarif["runs"][0]["results"] == []
-    assert "10 passed" in render_console(suite)
+    assert "11 passed" in render_console(suite)
     assert "approval-profile=run-wide" in render_console(suite)
     audit_result = next(item for item in json_report["results"] if item["id"] == "audit_receipts")
     assert audit_result["receipts"]

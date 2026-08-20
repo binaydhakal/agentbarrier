@@ -18,8 +18,14 @@ class SuiteFailure(AssertionError):
 
 
 class AmbiguousEffectError(AgentBarrierError):
-    """Raised when an effect committed but its caller did not receive an outcome."""
+    """Raised when the caller cannot determine whether an effect committed."""
 
-    def __init__(self, action_id: str) -> None:
-        super().__init__(f"outcome was lost after {action_id!r} committed")
+    def __init__(self, action_id: str, *, commit_observed: bool = True) -> None:
+        detail = (
+            f"outcome was lost after {action_id!r} committed"
+            if commit_observed
+            else f"outcome was lost before {action_id!r} commit could be confirmed"
+        )
+        super().__init__(detail)
         self.action_id = action_id
+        self.commit_observed = commit_observed

@@ -12,6 +12,8 @@ All notable changes to this project will be documented in this file. The format 
   pytest fixture, console output, JSON, JUnit, and SARIF evidence.
 - Deterministic, schema-validated compatibility evidence generated from both approval profiles,
   checked against the documentation table, and uploaded for each Python CI job.
+- Bounded, identity-bound reconciliation evidence for committed, not-committed, conflicting, and
+  unavailable outcomes, including durable audit receipts and guarded retry coverage.
 
 ## [0.2.1] - 2026-08-19
 

@@ -35,8 +35,8 @@ def test_reference_evidence_is_deterministic_and_schema_valid() -> None:
     assert first["profiles"] == ["run-wide", "per-action"]
     adapter = first["adapters"][0]
     assert adapter["distribution"]["name"] == "agentbarrier"
-    assert adapter["profiles"]["run-wide"]["summary"]["passed"] == 10
-    assert adapter["profiles"]["per-action"]["summary"]["passed"] == 10
+    assert adapter["profiles"]["run-wide"]["summary"]["passed"] == 11
+    assert adapter["profiles"]["per-action"]["summary"]["passed"] == 11
     serialized = dump_compatibility_evidence(first)
     assert serialized.endswith("\n")
     assert "duration" not in serialized

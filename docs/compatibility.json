@@ -11,6 +11,7 @@
         "cancellation",
         "delegation",
         "outcome_ambiguity",
+        "outcome_reconciliation",
         "parallel_barrier",
         "rejection",
         "replay",
@@ -67,6 +68,14 @@
               "status": "passed"
             },
             {
+              "capability": "outcome_reconciliation",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_reconciliation",
+              "status": "passed"
+            },
+            {
               "capability": "cancellation",
               "detail": null,
               "finding_code": null,
@@ -110,7 +119,7 @@
           "summary": {
             "errors": 0,
             "failed": 0,
-            "passed": 10,
+            "passed": 11,
             "skipped": 0
           }
         },
@@ -158,6 +167,14 @@
               "status": "passed"
             },
             {
+              "capability": "outcome_reconciliation",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_reconciliation",
+              "status": "passed"
+            },
+            {
               "capability": "cancellation",
               "detail": null,
               "finding_code": null,
@@ -201,7 +218,7 @@
           "summary": {
             "errors": 0,
             "failed": 0,
-            "passed": 10,
+            "passed": 11,
             "skipped": 0
           }
         }
@@ -271,6 +288,14 @@
               "status": "skipped"
             },
             {
+              "capability": "outcome_reconciliation",
+              "detail": "adapter does not declare 'outcome_reconciliation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_reconciliation",
+              "status": "skipped"
+            },
+            {
               "capability": "cancellation",
               "detail": null,
               "finding_code": null,
@@ -315,7 +340,7 @@
             "errors": 0,
             "failed": 0,
             "passed": 5,
-            "skipped": 5
+            "skipped": 6
           }
         },
         "run-wide": {
@@ -359,6 +384,14 @@
               "finding_code": null,
               "finding_title": null,
               "scenario": "outcome_ambiguity",
+              "status": "skipped"
+            },
+            {
+              "capability": "outcome_reconciliation",
+              "detail": "adapter does not declare 'outcome_reconciliation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_reconciliation",
               "status": "skipped"
             },
             {
@@ -406,7 +439,7 @@
             "errors": 0,
             "failed": 1,
             "passed": 4,
-            "skipped": 5
+            "skipped": 6
           }
         }
       },
@@ -476,6 +509,14 @@
               "status": "skipped"
             },
             {
+              "capability": "outcome_reconciliation",
+              "detail": "adapter does not declare 'outcome_reconciliation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_reconciliation",
+              "status": "skipped"
+            },
+            {
               "capability": "cancellation",
               "detail": null,
               "finding_code": null,
@@ -520,7 +561,7 @@
             "errors": 0,
             "failed": 0,
             "passed": 6,
-            "skipped": 4
+            "skipped": 5
           }
         },
         "run-wide": {
@@ -564,6 +605,14 @@
               "finding_code": null,
               "finding_title": null,
               "scenario": "outcome_ambiguity",
+              "status": "skipped"
+            },
+            {
+              "capability": "outcome_reconciliation",
+              "detail": "adapter does not declare 'outcome_reconciliation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_reconciliation",
               "status": "skipped"
             },
             {
@@ -611,7 +660,7 @@
             "errors": 0,
             "failed": 1,
             "passed": 5,
-            "skipped": 4
+            "skipped": 5
           }
         }
       },
@@ -681,6 +730,14 @@
               "status": "skipped"
             },
             {
+              "capability": "outcome_reconciliation",
+              "detail": "adapter does not declare 'outcome_reconciliation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_reconciliation",
+              "status": "skipped"
+            },
+            {
               "capability": "cancellation",
               "detail": null,
               "finding_code": null,
@@ -725,7 +782,7 @@
             "errors": 0,
             "failed": 0,
             "passed": 6,
-            "skipped": 4
+            "skipped": 5
           }
         },
         "run-wide": {
@@ -769,6 +826,14 @@
               "finding_code": null,
               "finding_title": null,
               "scenario": "outcome_ambiguity",
+              "status": "skipped"
+            },
+            {
+              "capability": "outcome_reconciliation",
+              "detail": "adapter does not declare 'outcome_reconciliation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_reconciliation",
               "status": "skipped"
             },
             {
@@ -816,7 +881,7 @@
             "errors": 0,
             "failed": 1,
             "passed": 5,
-            "skipped": 4
+            "skipped": 5
           }
         }
       },
@@ -885,6 +950,14 @@
               "status": "skipped"
             },
             {
+              "capability": "outcome_reconciliation",
+              "detail": "adapter does not declare 'outcome_reconciliation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_reconciliation",
+              "status": "skipped"
+            },
+            {
               "capability": "cancellation",
               "detail": null,
               "finding_code": null,
@@ -929,7 +1002,7 @@
             "errors": 0,
             "failed": 0,
             "passed": 5,
-            "skipped": 5
+            "skipped": 6
           }
         },
         "run-wide": {
@@ -973,6 +1046,14 @@
               "finding_code": null,
               "finding_title": null,
               "scenario": "outcome_ambiguity",
+              "status": "skipped"
+            },
+            {
+              "capability": "outcome_reconciliation",
+              "detail": "adapter does not declare 'outcome_reconciliation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_reconciliation",
               "status": "skipped"
             },
             {
@@ -1020,7 +1101,7 @@
             "errors": 0,
             "failed": 1,
             "passed": 4,
-            "skipped": 5
+            "skipped": 6
           }
         }
       },
@@ -1090,6 +1171,14 @@
               "status": "skipped"
             },
             {
+              "capability": "outcome_reconciliation",
+              "detail": "adapter does not declare 'outcome_reconciliation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_reconciliation",
+              "status": "skipped"
+            },
+            {
               "capability": "cancellation",
               "detail": null,
               "finding_code": null,
@@ -1134,7 +1223,7 @@
             "errors": 0,
             "failed": 0,
             "passed": 6,
-            "skipped": 4
+            "skipped": 5
           }
         },
         "run-wide": {
@@ -1181,6 +1270,14 @@
               "status": "skipped"
             },
             {
+              "capability": "outcome_reconciliation",
+              "detail": "adapter does not declare 'outcome_reconciliation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_reconciliation",
+              "status": "skipped"
+            },
+            {
               "capability": "cancellation",
               "detail": null,
               "finding_code": null,
@@ -1225,7 +1322,7 @@
             "errors": 0,
             "failed": 0,
             "passed": 6,
-            "skipped": 4
+            "skipped": 5
           }
         }
       },

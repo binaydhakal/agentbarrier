@@ -37,7 +37,7 @@ def test_self_test_cli_writes_reports(tmp_path: Path, capsys: pytest.CaptureFixt
     )
 
     assert exit_code == 0
-    assert "10 passed" in capsys.readouterr().out
+    assert "11 passed" in capsys.readouterr().out
     assert json.loads(json_path.read_text())["passed"] is True
     assert junit_path.exists()
     assert sarif_path.exists()

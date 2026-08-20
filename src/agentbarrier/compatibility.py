@@ -266,6 +266,7 @@ def render_compatibility_section(evidence: Mapping[str, Any]) -> str:
         "Args",
         "Replay",
         "Unknown",
+        "Reconcile",
         "Cancel",
         "Timeout",
         "Parallel",

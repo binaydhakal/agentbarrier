@@ -14,7 +14,7 @@ from agentbarrier.adapters.reference import ReferenceAdapter
 
 def test_controls(agentbarrier):
     suite = agentbarrier.verify_sync(ReferenceAdapter())
-    assert suite.passed_count == 10
+    assert suite.passed_count == 11
     assert suite.approval_profile.value == "per-action"
 """.lstrip(),
         encoding="utf-8",

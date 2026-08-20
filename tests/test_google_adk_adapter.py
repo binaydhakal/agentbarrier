@@ -39,6 +39,7 @@ def test_google_adk_adapter_exercises_declared_lifecycles_without_credentials() 
         "argument_binding",
         "replay",
         "outcome_ambiguity",
+        "outcome_reconciliation",
         "delegation",
         "audit_receipts",
     }

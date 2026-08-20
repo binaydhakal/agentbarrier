@@ -8,7 +8,13 @@ import pytest
 from agentbarrier.adapters.reference import ReferenceAdapter
 from agentbarrier.errors import AdapterContractError, UnsupportedCapability
 from agentbarrier.journal import EffectJournal
-from agentbarrier.models import ActionRequest, Capability, RunStatus
+from agentbarrier.models import (
+    ActionRequest,
+    AuditEvent,
+    Capability,
+    ReconciliationStatus,
+    RunStatus,
+)
 from agentbarrier.probe import EffectProbe
 
 
@@ -18,7 +24,7 @@ def test_reference_adapter_passes_complete_suite() -> None:
     suite = SuiteRunner().verify_sync(ReferenceAdapter())
 
     assert suite.passed
-    assert suite.passed_count == 10
+    assert suite.passed_count == 11
     assert suite.skipped_count == 0
 
 
@@ -108,6 +114,73 @@ def test_reference_timeout_covers_approval_wait(tmp_path: Path) -> None:
 
             assert outcome.status is RunStatus.TIMED_OUT
             assert journal.committed(run_id="approval-timeout") == ()
+
+    asyncio.run(exercise())
+
+
+def test_reference_reconciliation_is_bounded_cached_and_audited(tmp_path: Path) -> None:
+    async def exercise() -> None:
+        adapter = ReferenceAdapter()
+        with EffectJournal(tmp_path / "reconciliation.sqlite3") as journal:
+            request = ActionRequest("payment:stable", "charge", {"amount": 7}, False)
+            probe = EffectProbe(journal, run_id="reconciliation", raise_after_commit=True)
+            handle = await adapter.begin(
+                run_id="reconciliation",
+                actions=[request],
+                effect=probe,
+            )
+            with pytest.raises(AdapterContractError, match="terminal state"):
+                await handle.reconcile(request.action_id, 0.1)
+            assert (await handle.wait(1)).status is RunStatus.UNKNOWN
+            with pytest.raises(AdapterContractError, match="does not identify"):
+                await handle.reconcile("missing", 0.1)
+
+            evidence = await handle.reconcile(request.action_id, 0.1)
+            assert evidence.status is ReconciliationStatus.COMMITTED
+            assert await handle.reconcile(request.action_id, 0.1) is evidence
+            receipts = await handle.audit_receipts()
+            action_events = [
+                receipt.event for receipt in receipts if receipt.action_id == request.action_id
+            ]
+            assert action_events.count(AuditEvent.RECONCILIATION_STARTED) == 1
+            assert action_events.count(AuditEvent.RECONCILIATION_COMMITTED) == 1
+            await handle.close()
+
+    asyncio.run(exercise())
+
+
+def test_reference_reconciliation_preserves_unknown_when_evidence_is_unavailable(
+    tmp_path: Path,
+) -> None:
+    async def exercise() -> None:
+        adapter = ReferenceAdapter()
+        with EffectJournal(tmp_path / "unavailable.sqlite3") as journal:
+            request = ActionRequest("payment:unavailable", "charge", {"amount": 9}, False)
+            probe = EffectProbe(
+                journal,
+                run_id="unavailable",
+                raise_after_commit=True,
+                reconciliation_available=False,
+            )
+            handle = await adapter.begin(
+                run_id="unavailable",
+                actions=[request],
+                effect=probe,
+            )
+            assert (await handle.wait(1)).status is RunStatus.UNKNOWN
+
+            evidence = await handle.reconcile(request.action_id, 0.1)
+
+            assert evidence.status is ReconciliationStatus.UNAVAILABLE
+            assert (await handle.wait(1)).status is RunStatus.UNKNOWN
+            receipts = await handle.audit_receipts()
+            assert any(
+                receipt.event is AuditEvent.RECONCILIATION_UNAVAILABLE
+                and receipt.action_id == request.action_id
+                for receipt in receipts
+            )
+            assert len(journal.committed(run_id="unavailable")) == 1
+            await handle.close()
 
     asyncio.run(exercise())
 

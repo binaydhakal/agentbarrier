@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from agentbarrier.errors import SuiteFailure
+from agentbarrier.errors import AmbiguousEffectError, SuiteFailure
 from agentbarrier.models import (
     ActionRequest,
     ApprovalBarrierProfile,
@@ -34,6 +34,16 @@ def test_action_request_validates_identity_and_copies_arguments() -> None:
         ActionRequest(" ", "refund", {})
     with pytest.raises(ValueError, match="tool_name"):
         ActionRequest("action-1", "", {})
+
+
+def test_ambiguous_effect_error_distinguishes_observed_and_unconfirmed_commits() -> None:
+    committed = AmbiguousEffectError("action")
+    unconfirmed = AmbiguousEffectError("action", commit_observed=False)
+
+    assert committed.commit_observed is True
+    assert "after 'action' committed" in str(committed)
+    assert unconfirmed.commit_observed is False
+    assert "commit could be confirmed" in str(unconfirmed)
 
 
 @pytest.mark.parametrize(

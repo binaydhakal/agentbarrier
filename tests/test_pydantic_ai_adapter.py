@@ -35,7 +35,13 @@ def test_pydantic_ai_adapter_exercises_declared_lifecycles_without_credentials()
     skipped = {
         result.scenario_id for result in suite.results if result.status is ScenarioStatus.SKIPPED
     }
-    assert skipped == {"replay", "outcome_ambiguity", "delegation", "audit_receipts"}
+    assert skipped == {
+        "replay",
+        "outcome_ambiguity",
+        "outcome_reconciliation",
+        "delegation",
+        "audit_receipts",
+    }
     exercised = [
         result
         for result in suite.results

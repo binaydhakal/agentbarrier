@@ -19,7 +19,7 @@ Track the complete release in the [`0.3.0` milestone](https://github.com/binaydh
 
 - [x] Add reusable [per-action and strict run-wide approval-barrier profiles](https://github.com/binaydhakal/agentbarrier/issues/5).
 - [x] Generate [machine-readable compatibility evidence in CI](https://github.com/binaydhakal/agentbarrier/issues/6).
-- [ ] Improve [reconciliation coverage for ambiguous post-commit outcomes](https://github.com/binaydhakal/agentbarrier/issues/7).
+- [x] Improve [reconciliation coverage for ambiguous post-commit outcomes](https://github.com/binaydhakal/agentbarrier/issues/7).
 - [ ] Add a realistic, credential-free [SQLite payment-ledger example](https://github.com/binaydhakal/agentbarrier/issues/8).
 - [ ] Complete a deterministic [CrewAI adapter evaluation](https://github.com/binaydhakal/agentbarrier/issues/9).
 - [ ] Pass the complete [`0.3.0` release checklist](https://github.com/binaydhakal/agentbarrier/issues/10).

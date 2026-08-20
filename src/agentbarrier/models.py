@@ -25,6 +25,7 @@ class Capability(str, Enum):
     TIMEOUT = "timeout"
     PARALLEL_BARRIER = "parallel_barrier"
     OUTCOME_AMBIGUITY = "outcome_ambiguity"
+    OUTCOME_RECONCILIATION = "outcome_reconciliation"
     AUDIT_RECEIPTS = "audit_receipts"
     DELEGATION = "delegation"
 
@@ -63,6 +64,12 @@ class AuditEvent(str, Enum):
     RUN_TIMED_OUT = "run_timed_out"
     RUN_UNKNOWN = "run_unknown"
     RUN_FAILED = "run_failed"
+    RECONCILIATION_STARTED = "reconciliation_started"
+    RECONCILIATION_COMMITTED = "reconciliation_committed"
+    RECONCILIATION_NOT_COMMITTED = "reconciliation_not_committed"
+    RECONCILIATION_CONFLICT = "reconciliation_conflict"
+    RECONCILIATION_UNAVAILABLE = "reconciliation_unavailable"
+    RECONCILIATION_TIMED_OUT = "reconciliation_timed_out"
 
 
 class RunStatus(str, Enum):
@@ -73,6 +80,15 @@ class RunStatus(str, Enum):
     TIMED_OUT = "timed_out"
     FAILED = "failed"
     UNKNOWN = "unknown"
+
+
+class ReconciliationStatus(str, Enum):
+    """Strength of external evidence for an ambiguous action outcome."""
+
+    COMMITTED = "committed"
+    NOT_COMMITTED = "not_committed"
+    CONFLICT = "conflict"
+    UNAVAILABLE = "unavailable"
 
 
 class ScenarioStatus(str, Enum):
@@ -197,6 +213,17 @@ class RunOutcome:
     status: RunStatus
     detail: str | None = None
     metadata: Mapping[str, JsonValue] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class ReconciliationEvidence:
+    """Identity-bound evidence returned after an ambiguous action outcome."""
+
+    action_id: str
+    status: ReconciliationStatus
+    expected_action_digest: str
+    observed_action_digests: tuple[str, ...] = ()
+    detail: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
