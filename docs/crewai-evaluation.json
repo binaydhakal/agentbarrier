@@ -1,0 +1,235 @@
+{
+  "$schema": "https://raw.githubusercontent.com/binaydhakal/agentbarrier/main/docs/schemas/compatibility-v1.schema.json",
+  "adapters": [
+    {
+      "adapter_name": "crewai/1.15.17",
+      "available": true,
+      "capabilities": [
+        "approval",
+        "argument_binding",
+        "parallel_barrier",
+        "rejection"
+      ],
+      "distribution": {
+        "name": "crewai",
+        "version": "1.15.17"
+      },
+      "key": "crewai",
+      "label": "CrewAI (isolated dependency environment)",
+      "profiles": {
+        "per-action": {
+          "passed": true,
+          "results": [
+            {
+              "capability": "approval",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "approval_hold",
+              "status": "passed"
+            },
+            {
+              "capability": "rejection",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "rejection",
+              "status": "passed"
+            },
+            {
+              "capability": "argument_binding",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "argument_binding",
+              "status": "passed"
+            },
+            {
+              "capability": "replay",
+              "detail": "adapter does not declare 'replay'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "replay",
+              "status": "skipped"
+            },
+            {
+              "capability": "outcome_ambiguity",
+              "detail": "adapter does not declare 'outcome_ambiguity'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_ambiguity",
+              "status": "skipped"
+            },
+            {
+              "capability": "outcome_reconciliation",
+              "detail": "adapter does not declare 'outcome_reconciliation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_reconciliation",
+              "status": "skipped"
+            },
+            {
+              "capability": "cancellation",
+              "detail": "adapter does not declare 'cancellation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "cancellation",
+              "status": "skipped"
+            },
+            {
+              "capability": "timeout",
+              "detail": "adapter does not declare 'timeout'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "timeout",
+              "status": "skipped"
+            },
+            {
+              "capability": "parallel_barrier",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "parallel_barrier",
+              "status": "passed"
+            },
+            {
+              "capability": "delegation",
+              "detail": "adapter does not declare 'delegation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "delegation",
+              "status": "skipped"
+            },
+            {
+              "capability": "audit_receipts",
+              "detail": "adapter does not declare 'audit_receipts'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "audit_receipts",
+              "status": "skipped"
+            }
+          ],
+          "summary": {
+            "errors": 0,
+            "failed": 0,
+            "passed": 4,
+            "skipped": 7
+          }
+        },
+        "run-wide": {
+          "passed": false,
+          "results": [
+            {
+              "capability": "approval",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "approval_hold",
+              "status": "passed"
+            },
+            {
+              "capability": "rejection",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "rejection",
+              "status": "passed"
+            },
+            {
+              "capability": "argument_binding",
+              "detail": null,
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "argument_binding",
+              "status": "passed"
+            },
+            {
+              "capability": "replay",
+              "detail": "adapter does not declare 'replay'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "replay",
+              "status": "skipped"
+            },
+            {
+              "capability": "outcome_ambiguity",
+              "detail": "adapter does not declare 'outcome_ambiguity'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_ambiguity",
+              "status": "skipped"
+            },
+            {
+              "capability": "outcome_reconciliation",
+              "detail": "adapter does not declare 'outcome_reconciliation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "outcome_reconciliation",
+              "status": "skipped"
+            },
+            {
+              "capability": "cancellation",
+              "detail": "adapter does not declare 'cancellation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "cancellation",
+              "status": "skipped"
+            },
+            {
+              "capability": "timeout",
+              "detail": "adapter does not declare 'timeout'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "timeout",
+              "status": "skipped"
+            },
+            {
+              "capability": "parallel_barrier",
+              "detail": null,
+              "finding_code": "AB010",
+              "finding_title": "Sibling effect bypassed a pending approval",
+              "scenario": "parallel_barrier",
+              "status": "failed"
+            },
+            {
+              "capability": "delegation",
+              "detail": "adapter does not declare 'delegation'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "delegation",
+              "status": "skipped"
+            },
+            {
+              "capability": "audit_receipts",
+              "detail": "adapter does not declare 'audit_receipts'",
+              "finding_code": null,
+              "finding_title": null,
+              "scenario": "audit_receipts",
+              "status": "skipped"
+            }
+          ],
+          "summary": {
+            "errors": 0,
+            "failed": 1,
+            "passed": 3,
+            "skipped": 7
+          }
+        }
+      },
+      "python_requirement": ">=3.10",
+      "target": "agentbarrier.adapters.crewai:CrewAIAdapter",
+      "unavailable_reason": null
+    }
+  ],
+  "generator": {
+    "name": "agentbarrier",
+    "python_implementation": "CPython",
+    "python_version": "3.11",
+    "version": "0.3.0.dev0"
+  },
+  "profiles": [
+    "run-wide",
+    "per-action"
+  ],
+  "schema_version": "1.0"
+}

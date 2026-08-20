@@ -16,6 +16,9 @@ All notable changes to this project will be documented in this file. The format 
   unavailable outcomes, including durable audit receipts and guarded retry coverage.
 - Credential-free SQLite payment-ledger example with unsafe and safe approval boundaries, atomic
   operation identity, response-loss reconciliation, and final balance assertions.
+- Credential-free CrewAI adapter evaluation using its real pre-tool hook for approval, rejection,
+  argument binding, and per-action parallel behavior, with isolated compatibility evidence for
+  the upstream OpenAI SDK dependency conflict.
 
 ## [0.2.1] - 2026-08-19
 

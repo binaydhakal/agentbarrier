@@ -152,12 +152,22 @@ agentbarrier verify agentbarrier.adapters.google_adk:GoogleADKAdapter
 
 python -m pip install 'agentbarrier[autogen]'
 agentbarrier verify agentbarrier.adapters.autogen:AutoGenAdapter
+
+python -m pip install 'agentbarrier[crewai]'
+agentbarrier verify agentbarrier.adapters.crewai:CrewAIAdapter \
+  --approval-profile per-action
 ```
 
-The core, OpenAI, PydanticAI, Google ADK, and AutoGen adapters support Python 3.10–3.13. The
+The core, OpenAI, PydanticAI, Google ADK, AutoGen, and CrewAI adapters support Python 3.10–3.13. The
 LangGraph adapter requires Python 3.11+ because its interrupt lifecycle relies on async
 runnable-context propagation. Google ADK currently marks its tool-confirmation feature as
 experimental, so its adapter may emit that upstream warning during verification.
+
+CrewAI is installed and tested separately from the `all` extra because its current OpenAI SDK 2.x
+requirement conflicts with OpenAI Agents' 3.x requirement. Its real pre-tool hook enforces
+per-action approval, rejection, and argument binding; CrewAI's threaded tools do not provide a
+safe cancellation or timeout fence. See the
+[reproducible CrewAI evaluation](https://github.com/binaydhakal/agentbarrier/blob/main/docs/crewai-evaluation.md).
 
 These probes measure the framework's lifecycle behavior in a minimal configuration. For production
 confidence, implement an application adapter that replaces your real consequential tools with the
@@ -250,6 +260,7 @@ uv run ruff check .
 uv run ruff format --check .
 uv run mypy src
 uv run pytest --cov=agentbarrier --cov-report=term-missing
+uv run --isolated --extra test --extra crewai pytest tests/test_crewai_adapter.py
 uv build
 uv run twine check dist/*
 ```

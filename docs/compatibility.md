@@ -25,6 +25,10 @@ adapter version listed below passes its declared parallel capability under `per-
 An em dash means the adapter does not declare that capability; the result is an explicit skip, not
 a pass.
 
+CrewAI is evaluated in a
+[separate deterministic artifact](crewai-evaluation.md) because CrewAI 1.15.17 and OpenAI Agents
+0.22.0 require incompatible major versions of the OpenAI SDK.
+
 ## AB010 observation
 
 In the strict parallel scenario, the deterministic plan contains two sibling tool calls. One

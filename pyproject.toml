@@ -52,6 +52,7 @@ langgraph = ["langgraph>=1.2,<2; python_version >= '3.11'"]
 pydantic-ai = ["pydantic-ai-slim>=2.32,<3"]
 google-adk = ["google-adk>=2.7,<3"]
 autogen = ["autogen-core>=0.7.5,<0.8"]
+crewai = ["crewai>=1.15.17,<2; python_version < '3.14'"]
 test = [
   "build>=1.2.2",
   "jsonschema>=4.26",
@@ -102,6 +103,9 @@ markers = [
 [tool.coverage.run]
 branch = true
 source = ["agentbarrier"]
+# CrewAI is measured at 90%+ in its isolated dependency job because it cannot coexist with the
+# OpenAI Agents extra in the main coverage environment.
+omit = ["src/agentbarrier/adapters/crewai.py"]
 
 [tool.coverage.report]
 show_missing = true
@@ -119,3 +123,15 @@ select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 python_version = "3.10"
 strict = true
 packages = ["agentbarrier"]
+
+[tool.uv]
+conflicts = [
+  [
+    { extra = "openai" },
+    { extra = "crewai" },
+  ],
+  [
+    { extra = "all" },
+    { extra = "crewai" },
+  ],
+]

@@ -79,6 +79,18 @@ DEFAULT_ADAPTER_SPECS: tuple[AdapterSpec, ...] = (
     ),
 )
 
+# CrewAI currently requires OpenAI SDK 2.x while OpenAI Agents requires 3.x. Keep its evidence in
+# a separate reproducible environment until the upstream dependency ranges converge.
+CONFLICTING_ADAPTER_SPECS: tuple[AdapterSpec, ...] = (
+    AdapterSpec(
+        key="crewai",
+        label="CrewAI (isolated dependency environment)",
+        target="agentbarrier.adapters.crewai:CrewAIAdapter",
+        distribution="crewai",
+    ),
+)
+SELECTABLE_ADAPTER_SPECS = DEFAULT_ADAPTER_SPECS + CONFLICTING_ADAPTER_SPECS
+
 
 def select_adapter_specs(keys: Sequence[str] | None) -> tuple[AdapterSpec, ...]:
     """Select adapter specifications in canonical order."""
@@ -86,11 +98,11 @@ def select_adapter_specs(keys: Sequence[str] | None) -> tuple[AdapterSpec, ...]:
     if keys is None:
         return DEFAULT_ADAPTER_SPECS
     requested = set(keys)
-    known = {spec.key for spec in DEFAULT_ADAPTER_SPECS}
+    known = {spec.key for spec in SELECTABLE_ADAPTER_SPECS}
     unknown = requested - known
     if unknown:
         raise ValueError(f"unknown compatibility adapters: {', '.join(sorted(unknown))}")
-    return tuple(spec for spec in DEFAULT_ADAPTER_SPECS if spec.key in requested)
+    return tuple(spec for spec in SELECTABLE_ADAPTER_SPECS if spec.key in requested)
 
 
 def generate_compatibility_evidence(

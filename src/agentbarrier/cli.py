@@ -14,7 +14,7 @@ from agentbarrier import __version__
 from agentbarrier.adapter import AgentAdapter
 from agentbarrier.adapters.reference import ReferenceAdapter
 from agentbarrier.compatibility import (
-    DEFAULT_ADAPTER_SPECS,
+    SELECTABLE_ADAPTER_SPECS,
     dump_compatibility_evidence,
     evidence_has_errors,
     generate_compatibility_evidence,
@@ -51,8 +51,11 @@ def build_parser() -> argparse.ArgumentParser:
     compatibility.add_argument(
         "--adapter",
         action="append",
-        choices=[spec.key for spec in DEFAULT_ADAPTER_SPECS],
-        help="include one bundled adapter; repeat to select multiple (default: all)",
+        choices=[spec.key for spec in SELECTABLE_ADAPTER_SPECS],
+        help=(
+            "include one bundled adapter; repeat to select multiple "
+            "(default: mutually compatible set)"
+        ),
     )
     compatibility.add_argument(
         "--profile",

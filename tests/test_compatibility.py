@@ -121,8 +121,19 @@ def test_committed_evidence_and_document_are_in_sync() -> None:
     assert document == replace_compatibility_section(document, evidence)
 
 
+def test_committed_crewai_evidence_and_document_are_in_sync() -> None:
+    evidence = json.loads((ROOT / "docs/crewai-evaluation.json").read_text())
+    schema = json.loads((ROOT / "docs/schemas/compatibility-v1.schema.json").read_text())
+    document = (ROOT / "docs/crewai-evaluation.md").read_text()
+
+    Draft202012Validator(schema).validate(evidence)
+    assert evidence["adapters"][0]["key"] == "crewai"
+    assert document == replace_compatibility_section(document, evidence)
+
+
 def test_selection_and_profile_validation() -> None:
     assert select_adapter_specs(None) == DEFAULT_ADAPTER_SPECS
+    assert select_adapter_specs(("crewai",))[0].distribution == "crewai"
     with pytest.raises(ValueError, match="unknown compatibility adapters"):
         select_adapter_specs(("unknown",))
     with pytest.raises(ValueError, match="at least one approval profile"):
