@@ -43,6 +43,9 @@ Release gates:
 - a clean environment installs the candidate and completes a real pending → approved → executed →
   replayed flow without executing the protected function twice.
 
+The package CI runs this last gate from the built wheel with `tools/audit_runtime_wheel.py`; its
+effect ledger must contain exactly one row and its receipt sequence must include the replay.
+
 ## 0.5.0 — protocol and service integrations
 
 Deliverables:
