@@ -8,7 +8,7 @@ Last verified: 2026-08-19
 
 | Adapter | Version | Approval | Rejection | Args | Replay | Unknown | Cancel | Timeout | Parallel | Delegation | Audit |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Reference | 0.1.0 | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass |
+| Reference | 0.2.0 | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass |
 | OpenAI Agents Python | 0.22.0 | Pass | Pass | — | — | — | Pass | Pass | **AB010** | — | — |
 | LangGraph (Python 3.11+) | 1.2.11 | Pass | Pass | Pass | — | — | Pass | Pass | **AB010** | — | — |
 | PydanticAI | 2.32.0 | Pass | Pass | Pass | — | — | Pass | Pass | **AB010** | — | — |

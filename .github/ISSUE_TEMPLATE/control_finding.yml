@@ -52,7 +52,7 @@ body:
     id: environment
     attributes:
       label: Framework, AgentBarrier, Python, and operating-system versions
-      placeholder: Framework 1.2, AgentBarrier 0.1.0, Python 3.12, Linux
+      placeholder: Framework 1.2, AgentBarrier 0.2.0, Python 3.12, Linux
     validations:
       required: true
   - type: checkboxes

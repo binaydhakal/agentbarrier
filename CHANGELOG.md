@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-19
+
 ### Added
 
 - Reproducible terminal recording that demonstrates an unsafe pre-approval effect and the safe
@@ -37,5 +39,6 @@ All notable changes to this project will be documented in this file. The format 
 - Console, JSON, JUnit, and SARIF reports.
 - CLI, pytest fixture, Python 3.10–3.13 support, and strict type checking.
 
-[Unreleased]: https://github.com/binaydhakal/agentbarrier/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/binaydhakal/agentbarrier/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/binaydhakal/agentbarrier/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/binaydhakal/agentbarrier/releases/tag/v0.1.0
