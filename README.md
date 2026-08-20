@@ -36,6 +36,8 @@ framework or application honored the expected lifecycle boundary.
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/compatibility.md">Compatibility</a>
   ·
+  <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/ci.md">CI guide</a>
+  ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/threat-model.md">Threat model</a>
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/ROADMAP.md">Roadmap</a>
@@ -149,7 +151,9 @@ agentbarrier verify myapp.agentbarrier_adapter:create_adapter \
 
 The target may be an adapter instance, adapter class, or zero-argument factory. A non-zero exit
 status is returned for failed or errored guarantees. `--strict-skips` also treats unsupported
-guarantees as a failure.
+guarantees as a failure. See the
+[CI guide](https://github.com/binaydhakal/agentbarrier/blob/main/docs/ci.md) for copy-ready GitHub
+Actions and pytest examples.
 
 ## Guarantees
 

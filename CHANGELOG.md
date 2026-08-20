@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file. The format 
   timeout, and strict parallel-barrier behavior.
 - Credential-free Microsoft AutoGen Core adapter covering approval, rejection, argument binding,
   cancellation, timeout, and strict parallel-barrier behavior.
+- Copy-ready GitHub Actions and pytest examples for application adapters.
 
 ### Changed
 

@@ -11,7 +11,7 @@ to reproduce locally and enforce in CI without model credentials.
 - [x] Publish a reproducible visual demonstration of a real pre-approval side effect.
 - [x] Make console failures explain the expected boundary, observed effect, and repair direction.
 - [x] Expand the compatibility matrix with tested package and Python versions.
-- [ ] Add copy-ready CI examples for application adapters.
+- [x] Add copy-ready CI examples for application adapters.
 
 ## Next
 
