@@ -40,7 +40,7 @@ jobs:
       - if: matrix.python-version == '3.11'
         run: uv run ruff format --check .
       - if: matrix.python-version == '3.11'
-        run: uv run mypy src
+        run: uv run mypy src examples
       - name: Generate compatibility evidence
         env:
           MATRIX_PYTHON: ${{ matrix.python-version }}

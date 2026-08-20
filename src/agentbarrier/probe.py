@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 
 from agentbarrier.errors import AmbiguousEffectError
 from agentbarrier.journal import EffectJournal
@@ -28,6 +29,8 @@ class EffectProbe:
         raise_after_commit: bool = False,
         reconciliation_available: bool = True,
         reconciliation_delay_seconds: float = 0.0,
+        commit_action: Callable[[ActionRequest], bool | None] | None = None,
+        reconcile_action: Callable[[ActionRequest], ReconciliationEvidence] | None = None,
     ) -> None:
         if reconciliation_delay_seconds < 0:
             raise ValueError("reconciliation_delay_seconds must not be negative")
@@ -36,6 +39,8 @@ class EffectProbe:
         self.block_before_commit = block_before_commit
         self.reconciliation_available = reconciliation_available
         self.reconciliation_delay_seconds = reconciliation_delay_seconds
+        self.commit_action = commit_action
+        self.reconcile_action = reconcile_action
         self._raise_before_commit_remaining = int(raise_before_commit)
         self._raise_after_commit_remaining = int(raise_after_commit)
         self._started = asyncio.Event()
@@ -70,13 +75,17 @@ class EffectProbe:
         if self._raise_before_commit_remaining:
             self._raise_before_commit_remaining -= 1
             raise AmbiguousEffectError(action.action_id, commit_observed=False)
-        self.journal.record(
-            run_id=self.run_id,
-            action_id=action.action_id,
-            tool_name=action.tool_name,
-            phase=EffectPhase.COMMITTED,
-            arguments=arguments,
-        )
+        committed = self.commit_action(action) if self.commit_action is not None else True
+        if committed is not False:
+            self.journal.record(
+                run_id=self.run_id,
+                action_id=action.action_id,
+                tool_name=action.tool_name,
+                phase=EffectPhase.COMMITTED,
+                arguments=arguments,
+            )
+        else:
+            return f"sentinel effect already committed for {action.action_id}"
         if self._raise_after_commit_remaining:
             self._raise_after_commit_remaining -= 1
             raise AmbiguousEffectError(action.action_id)
@@ -95,6 +104,8 @@ class EffectProbe:
                 expected_action_digest=expected_digest,
                 detail="reconciliation evidence is unavailable",
             )
+        if self.reconcile_action is not None:
+            return self.reconcile_action(action)
         commits = tuple(
             event
             for event in self.journal.committed(run_id=self.run_id)

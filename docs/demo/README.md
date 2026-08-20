@@ -1,7 +1,7 @@
 # Regenerating the terminal demo
 
 The visual demo is generated from `failure.tape`; its failure is not edited or simulated.
-The first command runs `examples/run_unsafe_approval.py`, which checks the `approval_hold`
+The first command runs `python -m examples.run_unsafe_approval`, which checks the `approval_hold`
 guarantee against the deliberately unsafe adapter in `examples/unsafe_approval.py`. The second
 runs the same guarantee against AgentBarrier's safe reference adapter.
 

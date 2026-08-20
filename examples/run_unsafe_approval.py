@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import sys
 
-from unsafe_approval import UnsafeApprovalAdapter
-
 from agentbarrier.reporters import render_console
 from agentbarrier.runner import RunnerOptions, SuiteRunner
+from examples.unsafe_approval import UnsafeApprovalAdapter
 
 suite = SuiteRunner(RunnerOptions(scenarios=("approval_hold",))).verify_sync(
     UnsafeApprovalAdapter()

@@ -22,7 +22,7 @@ Type "clear"
 Enter
 Show
 
-Type "uv run python examples/run_unsafe_approval.py"
+Type "uv run python -m examples.run_unsafe_approval"
 Enter
 Wait+Screen@15s /Summary: 0 passed, 1 failed/
 Sleep 2s

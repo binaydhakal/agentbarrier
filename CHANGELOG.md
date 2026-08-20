@@ -14,6 +14,8 @@ All notable changes to this project will be documented in this file. The format 
   checked against the documentation table, and uploaded for each Python CI job.
 - Bounded, identity-bound reconciliation evidence for committed, not-committed, conflicting, and
   unavailable outcomes, including durable audit receipts and guarded retry coverage.
+- Credential-free SQLite payment-ledger example with unsafe and safe approval boundaries, atomic
+  operation identity, response-loss reconciliation, and final balance assertions.
 
 ## [0.2.1] - 2026-08-19
 

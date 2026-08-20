@@ -38,6 +38,8 @@ framework or application honored the expected lifecycle boundary.
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/ci.md">CI guide</a>
   ·
+  <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/payment-ledger-example.md">Payment example</a>
+  ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/threat-model.md">Threat model</a>
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/ROADMAP.md">Roadmap</a>
@@ -98,6 +100,18 @@ from myapp.agentbarrier_adapter import MyApplicationAdapter
 
 result = SuiteRunner().verify_sync(MyApplicationAdapter())
 result.raise_for_failure()
+```
+
+### SQLite database boundary example
+
+The repository includes a credential-free
+[SQLite payment-ledger example](https://github.com/binaydhakal/agentbarrier/blob/main/docs/payment-ledger-example.md)
+with intentionally unsafe and safe adapters. It verifies real local balance and transaction state
+across approval, rejection, replay, response loss, cancellation, and timeout—without presenting the
+example as production payment code.
+
+```bash
+uv run python -m examples.run_payment_ledger
 ```
 
 ### Approval-barrier profiles
