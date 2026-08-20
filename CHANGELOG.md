@@ -27,6 +27,9 @@ All notable changes to this project will be documented in this file. The format 
 - OpenAI Agents Python runtime tool builder with context-aware argument binding, required business
   idempotency, normal SDK schemas and options, durable approval and replay, and fail-closed exception
   and timeout behavior.
+- LangGraph runtime tool and fail-closed `ToolNode` builders with injected `ToolRuntime` exclusion,
+  business idempotency across model retries, durable approval and replay, and unknown-outcome error
+  propagation to the host application.
 
 ## [0.4.0] - 2026-08-20
 

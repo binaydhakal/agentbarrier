@@ -112,6 +112,11 @@ command, URL, API token, or network route remains available to the agent.
   application business identity rather than an SDK tool-call ID. It is complete mediation only if
   every consequential route uses the returned `FunctionTool` and cannot call the original function
   or downstream credential directly.
+- The LangGraph runtime builder excludes injected `ToolRuntime` and other schema-hidden values from
+  policy arguments and requires application business identity rather than a model tool-call ID.
+  Its fail-closed `ToolNode` disables exception-to-message conversion because every exception after
+  an execution claim may represent an unknown outcome. Middleware that catches those exceptions or
+  any route that calls the original function can bypass that protection.
 
 ## Out of scope
 

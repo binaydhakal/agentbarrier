@@ -121,9 +121,10 @@ They use HMAC-SHA256 signatures, automatic and configured secret redaction, boun
 crash-safe claims, stable event IDs, and explicit dead-letter recovery. See the
 [signed webhook guide](docs/webhooks.md).
 
-OpenAI Agents Python applications can construct a normal SDK `FunctionTool` whose original Python
-callable is protected by the same durable runtime boundary. It supports SDK-injected context while
-keeping business policy bound only to the exact tool arguments. See the
+OpenAI Agents Python and LangGraph applications can construct normal framework tools whose original
+Python callables are protected by the same durable runtime boundary. Injected framework context is
+kept out of the reviewed business arguments, and fail-closed execution helpers prevent an approval
+or uncertain outcome from becoming ordinary model-visible tool output. See the
 [framework runtime guide](docs/framework-runtime.md).
 
 ## See a real control failure
