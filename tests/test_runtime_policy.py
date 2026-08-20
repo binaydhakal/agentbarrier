@@ -127,7 +127,6 @@ def test_runtime_request_rejects_invalid_json_and_timestamp() -> None:
         ),
         (ArgumentCondition("missing", ConditionOperator.EQ, 1), {}, False),
         (ArgumentCondition("value", ConditionOperator.GT, 1), {"value": "3"}, False),
-        (ArgumentCondition("value", ConditionOperator.IN, "bad"), {"value": 1}, False),
         (ArgumentCondition("value", ConditionOperator.CONTAINS, 1), {"value": "abc"}, False),
     ],
 )
@@ -247,3 +246,40 @@ def test_policy_rejects_invalid_rule_configuration() -> None:
         PolicyRule("review", PolicyEffect.REQUIRE_APPROVAL, approval_ttl_seconds=0)
     with pytest.raises(ValueError, match="path"):
         ArgumentCondition("", ConditionOperator.EQ, 1)
+    with pytest.raises(TypeError, match="boolean"):
+        ArgumentCondition("value", ConditionOperator.EXISTS, "yes")
+    with pytest.raises(TypeError, match="list"):
+        ArgumentCondition("value", ConditionOperator.IN, "bad")
+    with pytest.raises(TypeError, match="string"):
+        ArgumentCondition("value", ConditionOperator.STARTS_WITH, 1)
+    with pytest.raises(TypeError, match="number or string"):
+        ArgumentCondition("value", ConditionOperator.GT, [1])
+    with pytest.raises(TypeError, match="unsupported"):
+        ArgumentCondition("value", ConditionOperator.EQ, object())  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "document",
+    [
+        {"version": "1", "rules": [], "unexpected": True},
+        {
+            "version": "1",
+            "rules": [{"name": "allow", "effect": "allow", "unexpected": True}],
+        },
+        {
+            "version": "1",
+            "rules": [
+                {
+                    "name": "allow",
+                    "effect": "allow",
+                    "conditions": [
+                        {"path": "value", "operator": "eq", "value": 1, "unexpected": True}
+                    ],
+                }
+            ],
+        },
+    ],
+)
+def test_policy_rejects_unknown_keys(document: dict[str, object]) -> None:
+    with pytest.raises(ValueError, match="unknown"):
+        RuntimePolicy.from_mapping(document)

@@ -164,6 +164,30 @@ def _pending_runtime_action(path: Path, *, action_id: str = "runtime-action") ->
     return request.action_id
 
 
+def _unknown_runtime_action(path: Path) -> str:
+    request = RuntimeRequest(
+        action_id="unknown-action",
+        namespace="billing",
+        tool_name="payments.refund",
+        arguments={"request_id": "unknown-refund", "amount": 100},
+        idempotency_key="unknown-refund",
+        policy_version="1",
+        created_at_ns=1,
+    )
+    with SQLiteRuntimeStore(path) as store:
+        action = store.submit(
+            request,
+            PolicyDecision(PolicyEffect.ALLOW, "allow", "1"),
+        )
+        store.claim(action.action_id, request_digest=request.request_digest)
+        store.mark_unknown(
+            action.action_id,
+            request_digest=request.request_digest,
+            error="ConnectionError",
+        )
+    return request.action_id
+
+
 def test_runtime_approval_cli_lists_shows_approves_and_audits(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -238,4 +262,56 @@ def test_runtime_approval_cli_rejects_and_handles_empty_lists(
 def test_runtime_cli_normalizes_unknown_action_to_usage_error(tmp_path: Path) -> None:
     with pytest.raises(SystemExit) as exc:
         main(["approvals", "show", "missing", "--db", str(tmp_path / "runtime.db")])
+    assert exc.value.code == 2
+
+
+def test_runtime_cli_reconciles_committed_unknown_action(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path = tmp_path / "runtime.db"
+    action_id = _unknown_runtime_action(path)
+    assert (
+        main(
+            [
+                "approvals",
+                "reconcile",
+                action_id,
+                "--db",
+                str(path),
+                "--outcome",
+                "committed",
+                "--resolved-by",
+                "payment-ledger",
+                "--reason",
+                "transaction exists",
+                "--result-json",
+                '{"status":"refunded"}',
+            ]
+        )
+        == 0
+    )
+    assert "reconciled unknown-action as committed" in capsys.readouterr().out
+    with SQLiteRuntimeStore(path) as store:
+        assert store.get_action(action_id).status is RuntimeStatus.SUCCEEDED
+
+
+def test_runtime_cli_requires_reconciliation_result(tmp_path: Path) -> None:
+    path = tmp_path / "runtime.db"
+    action_id = _unknown_runtime_action(path)
+    with pytest.raises(SystemExit) as exc:
+        main(
+            [
+                "approvals",
+                "reconcile",
+                action_id,
+                "--db",
+                str(path),
+                "--outcome",
+                "committed",
+                "--resolved-by",
+                "ledger",
+                "--reason",
+                "present",
+            ]
+        )
     assert exc.value.code == 2

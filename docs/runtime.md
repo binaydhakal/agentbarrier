@@ -86,10 +86,37 @@ filesystem permissions, backups, or external signing.
 
 ## Unknown outcomes fail closed
 
-Once a worker claims an action, no other worker can execute it. If the function raises, the process
-is cancelled, or the JSON result cannot be stored, the action becomes `unknown`. AgentBarrier will
-not retry it automatically because the external effect may already have committed. Reconcile the
-business operation using its idempotency key and use a new request only after its outcome is known.
+Once a worker claims an action, no other worker can execute it. A claim has a five-minute execution
+lease by default. If the function raises, the process is cancelled, the JSON result cannot be
+stored, or a claimed worker disappears until its lease expires, the action becomes `unknown`.
+AgentBarrier will not retry it automatically because the external effect may already have
+committed.
+
+First check the real downstream system using the stored tool name, arguments, and idempotency key.
+Then record one of the two explicit outcomes:
+
+```bash
+# The effect committed: save the result and make future calls replay it.
+agentbarrier approvals reconcile ACTION_ID \
+  --db agentbarrier.db \
+  --outcome committed \
+  --resolved-by alice \
+  --reason "verified in payment ledger" \
+  --result-json '{"status":"refunded"}'
+
+# The effect definitely did not commit: return it to the policy gate.
+agentbarrier approvals reconcile ACTION_ID \
+  --db agentbarrier.db \
+  --outcome not_committed \
+  --resolved-by alice \
+  --reason "payment provider confirms no matching request"
+```
+
+A `not_committed` action that originally required approval returns to `pending` with a fresh
+approval window; a policy-allowed action returns to `approved`. Every reconciliation records the
+operator identity and reason in the receipt chain. Never choose `not_committed` merely because an
+outcome cannot be found quickly—use it only when the downstream system proves the effect did not
+happen.
 
 ## Run the local refund example
 

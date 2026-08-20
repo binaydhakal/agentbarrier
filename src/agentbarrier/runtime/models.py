@@ -47,7 +47,17 @@ class RuntimeEvent(str, Enum):
     EXECUTION_STARTED = "execution_started"
     EXECUTION_SUCCEEDED = "execution_succeeded"
     EXECUTION_UNKNOWN = "execution_unknown"
+    EXECUTION_ABANDONED = "execution_abandoned"
+    RECONCILIATION_COMMITTED = "reconciliation_committed"
+    RECONCILIATION_NOT_COMMITTED = "reconciliation_not_committed"
     RESULT_REPLAYED = "result_replayed"
+
+
+class RuntimeReconciliation(str, Enum):
+    """Externally proven resolution of an unknown runtime outcome."""
+
+    COMMITTED = "committed"
+    NOT_COMMITTED = "not_committed"
 
 
 class ConditionOperator(str, Enum):
@@ -205,6 +215,7 @@ class RuntimeAction:
     created_at_ns: int
     updated_at_ns: int
     expires_at_ns: int | None = None
+    execution_lease_expires_at_ns: int | None = None
     result: JsonValue = None
     result_available: bool = False
     error: str | None = None

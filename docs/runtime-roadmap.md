@@ -31,7 +31,7 @@ Deliverables:
 - wrappers for synchronous and asynchronous JSON-compatible Python tool functions;
 - a durable SQLite approval and execution store using atomic state transitions;
 - exact request digests, idempotent result replay, expiry, and unknown-outcome handling;
-- CLI commands to list, inspect, approve, reject, and audit actions;
+- CLI commands to list, inspect, approve, reject, reconcile, and audit actions;
 - tamper-evident receipt-chain verification;
 - a credential-free refund example and complete API documentation.
 

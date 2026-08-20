@@ -16,7 +16,13 @@ from agentbarrier.errors import (
     PolicyDenied,
 )
 from agentbarrier.models import Decision
-from agentbarrier.runtime import PolicyDecision, PolicyEffect, RuntimeRequest, RuntimeStatus
+from agentbarrier.runtime import (
+    PolicyDecision,
+    PolicyEffect,
+    RuntimeReconciliation,
+    RuntimeRequest,
+    RuntimeStatus,
+)
 from agentbarrier.runtime.models import ClaimOutcome
 from agentbarrier.runtime.store import SQLiteRuntimeStore
 
@@ -188,6 +194,154 @@ def test_store_marks_started_exception_as_unknown_and_never_retries(tmp_path: Pa
             )
 
 
+def test_store_reconciles_committed_unknown_to_replayable_result(tmp_path: Path) -> None:
+    clock = Clock()
+    with SQLiteRuntimeStore(tmp_path / "runtime.db", clock_ns=clock) as store:
+        request = make_request(clock)
+        action = store.submit(
+            request,
+            PolicyDecision(PolicyEffect.ALLOW, "safe", "1"),
+        )
+        store.claim(action.action_id, request_digest=request.request_digest)
+        store.mark_unknown(
+            action.action_id,
+            request_digest=request.request_digest,
+            error="ConnectionError",
+        )
+
+        reconciled = store.reconcile(
+            action.action_id,
+            RuntimeReconciliation.COMMITTED,
+            resolved_by="payment-ledger",
+            reason="transaction refund-1 exists",
+            result={"status": "refunded"},
+        )
+        assert reconciled.status is RuntimeStatus.SUCCEEDED
+        assert reconciled.result == {"status": "refunded"}
+        assert (
+            store.claim(action.action_id, request_digest=request.request_digest).outcome
+            is ClaimOutcome.REPLAY
+        )
+
+
+def test_store_reconciles_absent_unknown_to_fresh_approval(tmp_path: Path) -> None:
+    clock = Clock()
+    with SQLiteRuntimeStore(tmp_path / "runtime.db", clock_ns=clock) as store:
+        request = make_request(clock)
+        action = store.submit(request, approval(ttl=10))
+        store.decide(action.action_id, Decision.APPROVE, decided_by="alice")
+        store.claim(action.action_id, request_digest=request.request_digest)
+        store.mark_unknown(
+            action.action_id,
+            request_digest=request.request_digest,
+            error="TimeoutError",
+        )
+        clock.advance(1)
+
+        reconciled = store.reconcile(
+            action.action_id,
+            RuntimeReconciliation.NOT_COMMITTED,
+            resolved_by="payment-ledger",
+            reason="transaction refund-1 is absent",
+        )
+        assert reconciled.status is RuntimeStatus.PENDING
+        assert reconciled.decided_by is None
+        assert reconciled.expires_at_ns == clock() + 10_000_000_000
+        with pytest.raises(ApprovalRequired):
+            store.claim(action.action_id, request_digest=request.request_digest)
+
+
+def test_store_validates_reconciliation_input_and_state(tmp_path: Path) -> None:
+    clock = Clock()
+    with SQLiteRuntimeStore(tmp_path / "runtime.db", clock_ns=clock) as store:
+        request = make_request(clock)
+        pending = store.submit(request, approval())
+        with pytest.raises(ValueError, match="resolved_by"):
+            store.reconcile(
+                pending.action_id,
+                RuntimeReconciliation.NOT_COMMITTED,
+                resolved_by="",
+                reason="absent",
+            )
+        with pytest.raises(ValueError, match="reason"):
+            store.reconcile(
+                pending.action_id,
+                RuntimeReconciliation.NOT_COMMITTED,
+                resolved_by="ledger",
+                reason="",
+            )
+        with pytest.raises(ValueError, match="result"):
+            store.reconcile(
+                pending.action_id,
+                RuntimeReconciliation.NOT_COMMITTED,
+                resolved_by="ledger",
+                reason="absent",
+                result={"unexpected": True},
+            )
+        with pytest.raises(InvalidActionState, match="pending"):
+            store.reconcile(
+                pending.action_id,
+                RuntimeReconciliation.COMMITTED,
+                resolved_by="ledger",
+                reason="present",
+                result=None,
+            )
+
+
+def test_store_execution_lease_turns_abandoned_claim_into_unknown(tmp_path: Path) -> None:
+    clock = Clock()
+    with SQLiteRuntimeStore(
+        tmp_path / "runtime.db",
+        clock_ns=clock,
+        execution_lease_seconds=1,
+    ) as store:
+        request = make_request(clock)
+        action = store.submit(
+            request,
+            PolicyDecision(PolicyEffect.ALLOW, "safe", "1"),
+        )
+        executing = store.claim(action.action_id, request_digest=request.request_digest).action
+        assert executing.execution_lease_expires_at_ns == clock() + 1_000_000_000
+        clock.advance(1)
+
+        unknown = store.get_action(action.action_id)
+        assert unknown.status is RuntimeStatus.UNKNOWN
+        assert unknown.error == "ExecutionLeaseExpired"
+        assert unknown.execution_lease_expires_at_ns is None
+        assert store.receipts(action_id=action.action_id)[-1].event.value == "execution_abandoned"
+        with pytest.raises(ActionOutcomeUnknown):
+            store.claim(action.action_id, request_digest=request.request_digest)
+
+
+def test_two_store_connections_cannot_claim_the_same_action(tmp_path: Path) -> None:
+    path = tmp_path / "runtime.db"
+    clock = Clock()
+    with (
+        SQLiteRuntimeStore(path, clock_ns=clock) as first,
+        SQLiteRuntimeStore(path, clock_ns=clock) as second,
+    ):
+        request = make_request(clock)
+        action = first.submit(
+            request,
+            PolicyDecision(PolicyEffect.ALLOW, "safe", "1"),
+        )
+        assert (
+            first.claim(action.action_id, request_digest=request.request_digest).outcome
+            is ClaimOutcome.EXECUTE
+        )
+        with pytest.raises(ActionInProgress):
+            second.claim(action.action_id, request_digest=request.request_digest)
+        first.complete(
+            action.action_id,
+            request_digest=request.request_digest,
+            result={"ok": True},
+        )
+        assert (
+            second.claim(action.action_id, request_digest=request.request_digest).outcome
+            is ClaimOutcome.REPLAY
+        )
+
+
 def test_store_validates_decisions_transitions_and_unknown_actions(tmp_path: Path) -> None:
     clock = Clock()
     with SQLiteRuntimeStore(tmp_path / "runtime.db", clock_ns=clock) as store:
@@ -230,3 +384,57 @@ def test_store_rejects_unknown_schema_version(tmp_path: Path) -> None:
 
     with pytest.raises(RuntimeError, match="unsupported"):
         SQLiteRuntimeStore(path)
+
+
+def test_store_migrates_v1_and_fails_closed_for_legacy_execution(tmp_path: Path) -> None:
+    path = tmp_path / "legacy.db"
+    connection = sqlite3.connect(path)
+    connection.execute("CREATE TABLE runtime_metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+    connection.execute("INSERT INTO runtime_metadata VALUES ('schema_version', '1')")
+    connection.execute(
+        """
+        CREATE TABLE runtime_actions (
+            action_id TEXT PRIMARY KEY,
+            namespace TEXT NOT NULL,
+            tool_name TEXT NOT NULL,
+            arguments_json TEXT NOT NULL,
+            idempotency_key TEXT NOT NULL,
+            request_digest TEXT NOT NULL,
+            policy_version TEXT NOT NULL,
+            policy_rule TEXT NOT NULL,
+            policy_effect TEXT NOT NULL,
+            status TEXT NOT NULL,
+            created_at_ns INTEGER NOT NULL,
+            updated_at_ns INTEGER NOT NULL,
+            expires_at_ns INTEGER,
+            result_json TEXT,
+            error TEXT,
+            decided_by TEXT,
+            decision_reason TEXT,
+            UNIQUE (namespace, tool_name, idempotency_key)
+        )
+        """
+    )
+    connection.execute(
+        """
+        INSERT INTO runtime_actions (
+            action_id, namespace, tool_name, arguments_json, idempotency_key,
+            request_digest, policy_version, policy_rule, policy_effect, status,
+            created_at_ns, updated_at_ns
+        ) VALUES ('legacy', 'n', 'tool', '{}', 'key', 'digest', '1', 'allow',
+                  'allow', 'executing', 1, 1)
+        """
+    )
+    connection.commit()
+    connection.close()
+
+    clock = Clock()
+    with SQLiteRuntimeStore(path, clock_ns=clock) as store:
+        action = store.get_action("legacy")
+        assert action.status is RuntimeStatus.UNKNOWN
+        assert action.error == "ExecutionLeaseExpired"
+        with sqlite3.connect(path) as migrated:
+            metadata = migrated.execute(
+                "SELECT value FROM runtime_metadata WHERE key = 'schema_version'"
+            ).fetchone()
+        assert metadata == ("2",)

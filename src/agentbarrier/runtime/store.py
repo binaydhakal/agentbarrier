@@ -32,13 +32,14 @@ from agentbarrier.runtime.models import (
     RuntimeAction,
     RuntimeEvent,
     RuntimeReceipt,
+    RuntimeReconciliation,
     RuntimeRequest,
     RuntimeStatus,
     canonical_json,
     detached_json_object,
 )
 
-_SCHEMA_VERSION = "1"
+_SCHEMA_VERSION = "2"
 
 
 class SQLiteRuntimeStore:
@@ -49,9 +50,13 @@ class SQLiteRuntimeStore:
         path: str | Path,
         *,
         clock_ns: Callable[[], int] = time.time_ns,
+        execution_lease_seconds: float = 300,
     ) -> None:
+        if execution_lease_seconds <= 0:
+            raise ValueError("execution_lease_seconds must be greater than zero")
         self.path = str(path)
         self._clock_ns = clock_ns
+        self._execution_lease_ns = int(execution_lease_seconds * 1_000_000_000)
         self._lock = threading.RLock()
         self._connection = sqlite3.connect(
             self.path,
@@ -84,9 +89,12 @@ class SQLiteRuntimeStore:
                     "INSERT INTO runtime_metadata (key, value) VALUES ('schema_version', ?)",
                     (_SCHEMA_VERSION,),
                 )
-            elif str(row["value"]) != _SCHEMA_VERSION:
+                previous_version = _SCHEMA_VERSION
+            else:
+                previous_version = str(row["value"])
+            if previous_version not in {"1", _SCHEMA_VERSION}:
                 raise RuntimeError(
-                    f"unsupported runtime schema version {row['value']!r}; "
+                    f"unsupported runtime schema version {previous_version!r}; "
                     f"expected {_SCHEMA_VERSION!r}"
                 )
             self._connection.execute(
@@ -105,6 +113,7 @@ class SQLiteRuntimeStore:
                     created_at_ns INTEGER NOT NULL,
                     updated_at_ns INTEGER NOT NULL,
                     expires_at_ns INTEGER,
+                    execution_lease_expires_at_ns INTEGER,
                     result_json TEXT,
                     error TEXT,
                     decided_by TEXT,
@@ -113,6 +122,30 @@ class SQLiteRuntimeStore:
                 )
                 """
             )
+            if previous_version == "1":
+                columns = {
+                    str(item["name"])
+                    for item in self._connection.execute(
+                        "PRAGMA table_info(runtime_actions)"
+                    ).fetchall()
+                }
+                if "execution_lease_expires_at_ns" not in columns:
+                    self._connection.execute(
+                        "ALTER TABLE runtime_actions "
+                        "ADD COLUMN execution_lease_expires_at_ns INTEGER"
+                    )
+                self._connection.execute(
+                    """
+                    UPDATE runtime_actions
+                    SET execution_lease_expires_at_ns = updated_at_ns
+                    WHERE status = ? AND execution_lease_expires_at_ns IS NULL
+                    """,
+                    (RuntimeStatus.EXECUTING.value,),
+                )
+                self._connection.execute(
+                    "UPDATE runtime_metadata SET value = ? WHERE key = 'schema_version'",
+                    (_SCHEMA_VERSION,),
+                )
             self._connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS runtime_receipts (
@@ -157,7 +190,7 @@ class SQLiteRuntimeStore:
                 (request.namespace, request.tool_name, request.idempotency_key),
             ).fetchone()
             if row is not None:
-                row = self._refresh_expiry(row, now=now)
+                row = self._refresh_state(row, now=now)
                 if str(row["request_digest"]) != request.request_digest:
                     raise ActionBindingError(
                         "idempotency key was already bound to a different tool request or "
@@ -232,7 +265,7 @@ class SQLiteRuntimeStore:
             raise ValueError("decided_by must not be empty")
         now = self._clock_ns()
         with self._transaction():
-            row = self._refresh_expiry(self._require_row(action_id), now=now)
+            row = self._refresh_state(self._require_row(action_id), now=now)
             action = self._row_to_action(row)
             target = (
                 RuntimeStatus.APPROVED if decision is Decision.APPROVE else RuntimeStatus.REJECTED
@@ -270,7 +303,7 @@ class SQLiteRuntimeStore:
 
         now = self._clock_ns()
         with self._transaction():
-            row = self._refresh_expiry(self._require_row(action_id), now=now)
+            row = self._refresh_state(self._require_row(action_id), now=now)
             action = self._row_to_action(row)
             if action.request_digest != request_digest:
                 raise ActionBindingError(
@@ -288,8 +321,17 @@ class SQLiteRuntimeStore:
                 return ExecutionClaim(ClaimOutcome.REPLAY, action, action.result)
             if action.status is RuntimeStatus.APPROVED:
                 self._connection.execute(
-                    "UPDATE runtime_actions SET status = ?, updated_at_ns = ? WHERE action_id = ?",
-                    (RuntimeStatus.EXECUTING.value, now, action_id),
+                    """
+                    UPDATE runtime_actions
+                    SET status = ?, updated_at_ns = ?, execution_lease_expires_at_ns = ?
+                    WHERE action_id = ?
+                    """,
+                    (
+                        RuntimeStatus.EXECUTING.value,
+                        now,
+                        now + self._execution_lease_ns,
+                        action_id,
+                    ),
                 )
                 self._append_receipt(
                     action_id=action_id,
@@ -334,7 +376,8 @@ class SQLiteRuntimeStore:
             self._connection.execute(
                 """
                 UPDATE runtime_actions
-                SET status = ?, updated_at_ns = ?, result_json = ?, error = NULL
+                SET status = ?, updated_at_ns = ?, result_json = ?, error = NULL,
+                    execution_lease_expires_at_ns = NULL
                 WHERE action_id = ?
                 """,
                 (RuntimeStatus.SUCCEEDED.value, now, result_json, action_id),
@@ -367,7 +410,8 @@ class SQLiteRuntimeStore:
             self._connection.execute(
                 """
                 UPDATE runtime_actions
-                SET status = ?, updated_at_ns = ?, error = ?
+                SET status = ?, updated_at_ns = ?, error = ?,
+                    execution_lease_expires_at_ns = NULL
                 WHERE action_id = ?
                 """,
                 (RuntimeStatus.UNKNOWN.value, now, error, action_id),
@@ -382,11 +426,95 @@ class SQLiteRuntimeStore:
             )
             return self._row_to_action(self._require_row(action_id))
 
+    def reconcile(
+        self,
+        action_id: str,
+        outcome: RuntimeReconciliation,
+        *,
+        resolved_by: str,
+        reason: str,
+        result: JsonValue = None,
+    ) -> RuntimeAction:
+        """Resolve an unknown outcome using external, identity-bound evidence."""
+
+        if not resolved_by.strip():
+            raise ValueError("resolved_by must not be empty")
+        if not reason.strip():
+            raise ValueError("reason must not be empty")
+        if outcome is RuntimeReconciliation.NOT_COMMITTED and result is not None:
+            raise ValueError("result is valid only for a committed reconciliation")
+        result_json = (
+            canonical_json(result, path="reconciliation result")
+            if outcome is RuntimeReconciliation.COMMITTED
+            else None
+        )
+        now = self._clock_ns()
+        with self._transaction():
+            action = self._row_to_action(self._refresh_state(self._require_row(action_id), now=now))
+            if action.status is not RuntimeStatus.UNKNOWN:
+                raise InvalidActionState(
+                    f"action {action_id!r} cannot be reconciled from {action.status.value}"
+                )
+
+            if outcome is RuntimeReconciliation.COMMITTED:
+                status = RuntimeStatus.SUCCEEDED
+                expires_at_ns = None
+                decided_by = resolved_by
+                decision_reason = reason
+                event = RuntimeEvent.RECONCILIATION_COMMITTED
+            elif action.policy_effect is PolicyEffect.REQUIRE_APPROVAL:
+                status = RuntimeStatus.PENDING
+                original_ttl_ns = (
+                    action.expires_at_ns - action.created_at_ns
+                    if action.expires_at_ns is not None
+                    else None
+                )
+                expires_at_ns = now + original_ttl_ns if original_ttl_ns is not None else None
+                decided_by = None
+                decision_reason = None
+                event = RuntimeEvent.RECONCILIATION_NOT_COMMITTED
+            elif action.policy_effect is PolicyEffect.ALLOW:
+                status = RuntimeStatus.APPROVED
+                expires_at_ns = None
+                decided_by = "policy"
+                decision_reason = None
+                event = RuntimeEvent.RECONCILIATION_NOT_COMMITTED
+            else:  # pragma: no cover - denied actions can never start execution
+                raise InvalidActionState("a policy-denied action cannot have an unknown outcome")
+
+            self._connection.execute(
+                """
+                UPDATE runtime_actions
+                SET status = ?, updated_at_ns = ?, expires_at_ns = ?,
+                    execution_lease_expires_at_ns = NULL, result_json = ?, error = NULL,
+                    decided_by = ?, decision_reason = ?
+                WHERE action_id = ?
+                """,
+                (
+                    status.value,
+                    now,
+                    expires_at_ns,
+                    result_json,
+                    decided_by,
+                    decision_reason,
+                    action_id,
+                ),
+            )
+            self._append_receipt(
+                action_id=action_id,
+                event=event,
+                timestamp_ns=now,
+                request_digest=action.request_digest,
+                actor=resolved_by,
+                detail=reason,
+            )
+            return self._row_to_action(self._require_row(action_id))
+
     def get_action(self, action_id: str) -> RuntimeAction:
         """Return one action, applying expiry before the snapshot is read."""
 
         with self._transaction():
-            row = self._refresh_expiry(self._require_row(action_id), now=self._clock_ns())
+            row = self._refresh_state(self._require_row(action_id), now=self._clock_ns())
             return self._row_to_action(row)
 
     def list_actions(self, *, status: RuntimeStatus | None = None) -> tuple[RuntimeAction, ...]:
@@ -397,7 +525,7 @@ class SQLiteRuntimeStore:
                 "SELECT * FROM runtime_actions ORDER BY created_at_ns, action_id"
             ).fetchall()
             now = self._clock_ns()
-            actions = tuple(self._row_to_action(self._refresh_expiry(row, now=now)) for row in rows)
+            actions = tuple(self._row_to_action(self._refresh_state(row, now=now)) for row in rows)
             if status is None:
                 return actions
             return tuple(action for action in actions if action.status is status)
@@ -457,6 +585,40 @@ class SQLiteRuntimeStore:
                 request_digest=str(row["request_digest"]),
                 actor="runtime",
                 detail=None,
+            )
+            return self._require_row(str(row["action_id"]))
+        return row
+
+    def _refresh_state(self, row: sqlite3.Row, *, now: int) -> sqlite3.Row:
+        row = self._refresh_expiry(row, now=now)
+        status = RuntimeStatus(str(row["status"]))
+        lease_expires = row["execution_lease_expires_at_ns"]
+        if (
+            status is RuntimeStatus.EXECUTING
+            and lease_expires is not None
+            and now >= int(lease_expires)
+        ):
+            self._connection.execute(
+                """
+                UPDATE runtime_actions
+                SET status = ?, updated_at_ns = ?, error = ?,
+                    execution_lease_expires_at_ns = NULL
+                WHERE action_id = ?
+                """,
+                (
+                    RuntimeStatus.UNKNOWN.value,
+                    now,
+                    "ExecutionLeaseExpired",
+                    row["action_id"],
+                ),
+            )
+            self._append_receipt(
+                action_id=str(row["action_id"]),
+                event=RuntimeEvent.EXECUTION_ABANDONED,
+                timestamp_ns=now,
+                request_digest=str(row["request_digest"]),
+                actor="runtime",
+                detail="ExecutionLeaseExpired",
             )
             return self._require_row(str(row["action_id"]))
         return row
@@ -563,6 +725,11 @@ class SQLiteRuntimeStore:
             created_at_ns=int(row["created_at_ns"]),
             updated_at_ns=int(row["updated_at_ns"]),
             expires_at_ns=(int(row["expires_at_ns"]) if row["expires_at_ns"] is not None else None),
+            execution_lease_expires_at_ns=(
+                int(row["execution_lease_expires_at_ns"])
+                if row["execution_lease_expires_at_ns"] is not None
+                else None
+            ),
             result=json.loads(str(result_json)) if result_json is not None else None,
             result_available=result_json is not None,
             error=str(row["error"]) if row["error"] is not None else None,

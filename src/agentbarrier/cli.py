@@ -23,11 +23,16 @@ from agentbarrier.compatibility import (
     write_compatibility_outputs,
 )
 from agentbarrier.errors import AgentBarrierError
-from agentbarrier.models import ApprovalBarrierProfile
+from agentbarrier.models import ApprovalBarrierProfile, JsonValue
 from agentbarrier.models import Decision as RuntimeDecision
 from agentbarrier.reporters import render_console, write_json, write_junit, write_sarif
 from agentbarrier.runner import RunnerOptions, SuiteRunner
-from agentbarrier.runtime.models import RuntimeAction, RuntimeReceipt, RuntimeStatus
+from agentbarrier.runtime.models import (
+    RuntimeAction,
+    RuntimeReceipt,
+    RuntimeReconciliation,
+    RuntimeStatus,
+)
 from agentbarrier.runtime.store import SQLiteRuntimeStore
 from agentbarrier.scenarios import DEFAULT_SCENARIOS
 
@@ -125,6 +130,24 @@ def build_parser() -> argparse.ArgumentParser:
         )
         decision_parser.add_argument("--reason", help="optional decision reason")
         decision_parser.set_defaults(handler=_run_approval_decision, decision=decision)
+
+    reconcile = approval_commands.add_parser(
+        "reconcile", help="resolve an action with an unknown external outcome"
+    )
+    reconcile.add_argument("action_id")
+    _add_runtime_db_option(reconcile)
+    reconcile.add_argument(
+        "--outcome",
+        required=True,
+        choices=[outcome.value for outcome in RuntimeReconciliation],
+    )
+    reconcile.add_argument("--resolved-by", required=True)
+    reconcile.add_argument("--reason", required=True)
+    reconcile.add_argument(
+        "--result-json",
+        help="JSON result required when the external effect is proven committed",
+    )
+    reconcile.set_defaults(handler=_run_runtime_reconciliation)
 
     audit = commands.add_parser("audit", help="inspect and verify runtime audit receipts")
     _add_runtime_db_option(audit)
@@ -273,6 +296,26 @@ def _run_approval_decision(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def _run_runtime_reconciliation(arguments: argparse.Namespace) -> int:
+    outcome = RuntimeReconciliation(cast(str, arguments.outcome))
+    raw_result = cast(str | None, arguments.result_json)
+    if outcome is RuntimeReconciliation.COMMITTED and raw_result is None:
+        raise ValueError("committed reconciliation requires --result-json")
+    if outcome is RuntimeReconciliation.NOT_COMMITTED and raw_result is not None:
+        raise ValueError("--result-json is valid only for a committed reconciliation")
+    result = cast(JsonValue, json.loads(raw_result)) if raw_result is not None else None
+    with SQLiteRuntimeStore(cast(str, arguments.db)) as store:
+        action = store.reconcile(
+            cast(str, arguments.action_id),
+            outcome,
+            resolved_by=cast(str, arguments.resolved_by),
+            reason=cast(str, arguments.reason),
+            result=result,
+        )
+    print(f"reconciled {action.action_id} as {outcome.value} ({action.status.value})")
+    return 0
+
+
 def _run_runtime_audit(arguments: argparse.Namespace) -> int:
     with SQLiteRuntimeStore(cast(str, arguments.db)) as store:
         receipts = store.receipts(action_id=cast(str | None, arguments.action_id))
@@ -314,6 +357,7 @@ def _action_payload(action: RuntimeAction) -> dict[str, object]:
         "created_at_ns": action.created_at_ns,
         "updated_at_ns": action.updated_at_ns,
         "expires_at_ns": action.expires_at_ns,
+        "execution_lease_expires_at_ns": action.execution_lease_expires_at_ns,
         "result": action.result if action.result_available else None,
         "result_available": action.result_available,
         "error": action.error,

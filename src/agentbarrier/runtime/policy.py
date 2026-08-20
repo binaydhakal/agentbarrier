@@ -7,9 +7,15 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from fnmatch import fnmatchcase
 from pathlib import Path
+from typing import cast
 
 from agentbarrier.models import JsonValue
-from agentbarrier.runtime.models import ConditionOperator, PolicyDecision, PolicyEffect
+from agentbarrier.runtime.models import (
+    ConditionOperator,
+    PolicyDecision,
+    PolicyEffect,
+    canonical_json,
+)
 
 _MISSING = object()
 
@@ -25,6 +31,25 @@ class ArgumentCondition:
     def __post_init__(self) -> None:
         if not self.path.strip():
             raise ValueError("condition path must not be empty")
+        canonical_json(self.value, path="condition value")
+        if self.operator is ConditionOperator.EXISTS and not isinstance(self.value, bool):
+            raise TypeError("exists condition value must be a boolean")
+        if self.operator in {ConditionOperator.IN, ConditionOperator.NOT_IN} and not isinstance(
+            self.value, list
+        ):
+            raise TypeError(f"{self.operator.value} condition value must be a list")
+        if self.operator in {
+            ConditionOperator.STARTS_WITH,
+            ConditionOperator.ENDS_WITH,
+        } and not isinstance(self.value, str):
+            raise TypeError(f"{self.operator.value} condition value must be a string")
+        if self.operator in {
+            ConditionOperator.LT,
+            ConditionOperator.LE,
+            ConditionOperator.GT,
+            ConditionOperator.GE,
+        } and (not isinstance(self.value, (int, float, str)) or isinstance(self.value, bool)):
+            raise TypeError(f"{self.operator.value} condition value must be a number or string")
 
     def matches(self, arguments: Mapping[str, JsonValue]) -> bool:
         """Return whether the argument value satisfies this condition."""
@@ -169,12 +194,13 @@ class RuntimePolicy:
         data: object = json.loads(Path(path).read_text(encoding="utf-8"))
         if not isinstance(data, Mapping):
             raise TypeError("policy document must be a JSON object")
-        return cls.from_mapping(data)
+        return cls.from_mapping(cast(Mapping[str, object], data))
 
     @classmethod
-    def from_mapping(cls, data: Mapping[object, object]) -> RuntimePolicy:
+    def from_mapping(cls, data: Mapping[str, object]) -> RuntimePolicy:
         """Parse and validate a mapping as a runtime policy."""
 
+        cls._validate_keys(data, {"version", "default", "rules"}, label="policy")
         version = data.get("version")
         if not isinstance(version, str):
             raise TypeError("policy version must be a string")
@@ -195,11 +221,17 @@ class RuntimePolicy:
     def _parse_rule(value: object) -> PolicyRule:
         if not isinstance(value, Mapping):
             raise TypeError("each policy rule must be an object")
-        name = value.get("name")
-        effect = value.get("effect")
-        tool = value.get("tool", "*")
-        ttl = value.get("approval_ttl_seconds")
-        raw_conditions = value.get("conditions", [])
+        rule = cast(Mapping[str, object], value)
+        RuntimePolicy._validate_keys(
+            rule,
+            {"name", "effect", "tool", "approval_ttl_seconds", "conditions"},
+            label="rule",
+        )
+        name = rule.get("name")
+        effect = rule.get("effect")
+        tool = rule.get("tool", "*")
+        ttl = rule.get("approval_ttl_seconds")
+        raw_conditions = rule.get("conditions", [])
         if not isinstance(name, str) or not isinstance(effect, str) or not isinstance(tool, str):
             raise TypeError("rule name, effect, and tool must be strings")
         if ttl is not None and (not isinstance(ttl, (int, float)) or isinstance(ttl, bool)):
@@ -219,13 +251,24 @@ class RuntimePolicy:
     def _parse_condition(value: object) -> ArgumentCondition:
         if not isinstance(value, Mapping):
             raise TypeError("each policy condition must be an object")
-        path = value.get("path")
-        operator = value.get("operator")
-        condition_value = value.get("value", True)
+        condition = cast(Mapping[str, object], value)
+        RuntimePolicy._validate_keys(condition, {"path", "operator", "value"}, label="condition")
+        path = condition.get("path")
+        operator = condition.get("operator")
+        condition_value = condition.get("value", True)
         if not isinstance(path, str) or not isinstance(operator, str):
             raise TypeError("condition path and operator must be strings")
         return ArgumentCondition(
             path=path,
             operator=ConditionOperator(operator),
-            value=condition_value,
+            value=cast(JsonValue, condition_value),
         )
+
+    @staticmethod
+    def _validate_keys(value: Mapping[str, object], allowed: set[str], *, label: str) -> None:
+        non_string = [key for key in value if not isinstance(key, str)]
+        if non_string:
+            raise TypeError(f"{label} keys must be strings")
+        unknown = sorted(key for key in value if key not in allowed)
+        if unknown:
+            raise ValueError(f"unknown {label} keys: {', '.join(unknown)}")

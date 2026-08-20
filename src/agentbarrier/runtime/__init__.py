@@ -8,6 +8,7 @@ from agentbarrier.runtime.models import (
     RuntimeAction,
     RuntimeEvent,
     RuntimeReceipt,
+    RuntimeReconciliation,
     RuntimeRequest,
     RuntimeStatus,
 )
@@ -26,6 +27,7 @@ __all__ = [
     "RuntimeEvent",
     "RuntimePolicy",
     "RuntimeReceipt",
+    "RuntimeReconciliation",
     "RuntimeRequest",
     "RuntimeStatus",
     "SQLiteRuntimeStore",
