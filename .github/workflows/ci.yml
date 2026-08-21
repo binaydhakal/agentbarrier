@@ -186,6 +186,7 @@ jobs:
             "uvicorn>=0.34,<1"
           build/wheel-audit/bin/python tools/audit_mcp_gateway_wheel.py
           build/wheel-audit/bin/python tools/audit_dashboard_wheel.py
+          build/wheel-audit/bin/python tools/audit_slack_wheel.py
           uv pip install --python build/wheel-audit/bin/python "langgraph>=1.2,<2"
           build/wheel-audit/bin/python tools/audit_langgraph_wheel.py
           uv pip install --python build/wheel-audit/bin/python "pydantic-ai-slim>=2.32,<3"

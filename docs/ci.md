@@ -111,3 +111,6 @@ SQLite and PostgreSQL backends. A clean virtual environment installs the built w
 pending, approval, execution, replay, pause, limit, and receipt-chain behavior against PostgreSQL;
 this guards against source-tree-only dependency or packaging mistakes. The core and live
 PostgreSQL jobs each enforce at least 90 percent branch coverage in their respective environments.
+The package job also installs the built wheel with Slack service dependencies and completes a
+credential-free pending → posted → signed member approval → replay-safe decision audit. No network
+request or real Slack credential is used.

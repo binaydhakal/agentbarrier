@@ -12,6 +12,13 @@ from agentbarrier.runtime import open_runtime_store
 from agentbarrier.service.api import create_approval_app
 from agentbarrier.service.auth import StaticBearerAuth
 from agentbarrier.service.dashboard import DashboardSessionStore, create_dashboard_app
+from agentbarrier.service.slack import (
+    SlackConfig,
+    SlackInteractionService,
+    SlackNotificationSnapshot,
+    SlackNotificationStore,
+    SlackWorker,
+)
 from agentbarrier.service.webhooks import (
     WebhookConfig,
     WebhookDeliverySnapshot,
@@ -143,6 +150,75 @@ def retry_webhook_delivery(
     _require_existing_file(state_path, label="webhook state database")
     with WebhookDeliveryStore(state_path) as store:
         return store.retry_dead(endpoint_id=endpoint_id, event_id=event_id)
+
+
+def run_slack_service(
+    *,
+    database_path: str | Path | None,
+    state_path: str | Path,
+    config_path: str | Path,
+    postgres_dsn_env: str | None = None,
+    postgres_schema: str = "agentbarrier",
+    host: str = "127.0.0.1",
+    port: int = 8789,
+    interaction_path: str = "/slack/interactions",
+    poll_interval_seconds: float = 1,
+) -> None:
+    """Run signed Slack interactions and the durable notification worker."""
+
+    if not host.strip():
+        raise ValueError("Slack service host must not be empty")
+    if not 1 <= port <= 65535:
+        raise ValueError("Slack service port must be between 1 and 65535")
+    if database_path is not None:
+        _require_existing_file(database_path, label="runtime database")
+        if Path(database_path).expanduser().resolve() == Path(state_path).expanduser().resolve():
+            raise ValueError("Slack state database must be separate from the runtime database")
+    config = SlackConfig.from_file(config_path)
+    with (
+        open_runtime_store(
+            database_path=database_path,
+            postgres_dsn_env=postgres_dsn_env,
+            postgres_schema=postgres_schema,
+        ) as runtime_store,
+        SlackNotificationStore(state_path) as notification_store,
+    ):
+        worker = SlackWorker(
+            runtime_store=runtime_store,
+            notification_store=notification_store,
+            config=config,
+        )
+        service = SlackInteractionService(
+            runtime_store=runtime_store,
+            notification_store=notification_store,
+            config=config,
+            worker=worker,
+            path=interaction_path,
+            poll_interval_seconds=poll_interval_seconds,
+        )
+        uvicorn.run(service.app, host=host, port=port, log_level="info")
+
+
+def slack_notification_status(
+    state_path: str | Path,
+) -> tuple[SlackNotificationSnapshot, ...]:
+    """Read durable Slack notification state without loading Slack secrets."""
+
+    _require_existing_file(state_path, label="Slack state database")
+    with SlackNotificationStore(state_path) as store:
+        return store.snapshots()
+
+
+def retry_slack_notification(
+    state_path: str | Path,
+    *,
+    action_id: str,
+) -> SlackNotificationSnapshot:
+    """Requeue one exact dead Slack notification for another bounded attempt."""
+
+    _require_existing_file(state_path, label="Slack state database")
+    with SlackNotificationStore(state_path) as store:
+        return store.retry_dead(action_id)
 
 
 def _require_existing_file(path: str | Path, *, label: str) -> None:

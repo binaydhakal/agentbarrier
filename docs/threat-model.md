@@ -6,7 +6,8 @@ enforces deterministic policy immediately before a real function crosses a conse
 boundary. The MCP gateway applies the same runtime boundary before forwarding a tool call to an
 upstream server. The approval API binds decisions to authenticated reviewers, and signed webhooks
 export redacted runtime events to external systems. The approval dashboard provides a
-server-rendered human review surface over the same authenticated runtime store.
+server-rendered human review surface over the same authenticated runtime store. The Slack service
+delivers exact pending actions and maps signed workspace-member interactions to runtime decisions.
 
 ## Security goals
 
@@ -56,6 +57,12 @@ access, system time, HTTP client, and receiver verification are trusted. Endpoin
 configuration and can reach the worker's network; they must not be derived from model output. A
 valid signature proves possession of the configured shared secret, not that the receiver will apply
 an event safely or exactly once.
+
+For Slack approvals, the trusted base additionally includes Slack's request-signing service, the
+configured workspace and app, the bot token and signing secret, exact reviewer member IDs, the
+private approval channel, HTTPS ingress that preserves the raw request body, and the separate Slack
+notification database. Workspace administrators and allowed member sessions are authorization
+principals, not untrusted model input.
 
 An application result is meaningful only when the sentinel replaces the production tool at the
 same complete-mediation boundary. Replacing a tool earlier tests planning but can miss a later
@@ -148,6 +155,21 @@ command, URL, API token, or network route remains available to the agent.
 - HTTPS is required off loopback and redirects are disabled, but a trusted operator can still
   configure an internal or sensitive network target. Isolate worker egress and allow-list receiver
   destinations where the deployment requires SSRF resistance.
+- Slack interactions are verified with Slack's `v0` HMAC over the untouched body, bounded to a
+  five-minute window, replay-checked by signature, and matched to the configured app, workspace,
+  channel, posted message timestamp, action ID, and exact runtime digest. Reviewer identity and
+  allowed decisions come only from the local member-ID allowlist. A copied button, forged payload,
+  unauthorized member, changed digest, or different message fails closed.
+- Exact arguments are visible to configured Slack channel members. Actions too large to display
+  completely receive no Slack decision buttons. Use a private channel, restrict membership and
+  retention, disable unnecessary integrations, and treat channel history, notifications, exports,
+  screenshots, and member devices as sensitive. Slack availability or a failed message update does
+  not change the authoritative runtime state.
+- Slack notification delivery is at least once with stable client message IDs, crash-recoverable
+  claims, bounded retries, and explicit dead-letter recovery. A lost API response may still create
+  a duplicate message; only the exact recorded message timestamp is authorized to decide. This
+  release uses a separate local SQLite notification database and supports one Slack service host,
+  not independently scaled notification workers.
 - The OpenAI Agents runtime builder excludes SDK-injected context from policy arguments and requires
   application business identity rather than an SDK tool-call ID. It is complete mediation only if
   every consequential route uses the returned `FunctionTool` and cannot call the original function
@@ -188,6 +210,8 @@ AgentBarrier does not:
   organization roles, or separation-of-duty enforcement;
 - safely resume interactive MCP `InputRequiredResult` rounds after an execution claim;
 - make an external webhook receiver trustworthy, available, or exactly once;
+- make Slack, a workspace administrator, an allowed member session, or a channel member
+  trustworthy, phishing-resistant, or always available;
 - invent a reliable business idempotency key from a JSON-RPC request ID;
 - secure, sign, encrypt, replicate, or retain the runtime database and its backups;
 - authenticate CLI reviewer names or provide multi-user authorization in 0.4;

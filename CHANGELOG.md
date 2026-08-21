@@ -22,6 +22,11 @@ All notable changes to this project will be documented in this file. The format 
 - PostgreSQL runtime storage with an explicit migration boundary, secret-safe environment-based
   configuration, dedicated schemas, cross-process advisory locking, SQLite behavioral parity,
   service and CLI integration, real database CI, and an installed-wheel lifecycle audit.
+- Signed Slack approval notifications with exact action and posted-message binding, strict
+  workspace/app/channel/member authorization, per-member decision permissions, five-minute HMAC
+  request verification, durable interaction replay protection, bounded notification retries,
+  dead-letter recovery commands, oversized-action fail-closed behavior, and an installed-wheel
+  approval audit.
 
 - Transport-neutral sync and async runtime execution APIs for dynamic tool dispatchers, MCP
   gateways, and framework integrations that cannot use a Python decorator.

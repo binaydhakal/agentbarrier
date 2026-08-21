@@ -45,6 +45,9 @@ and atomic fixed-window action or integer-value limits enforced by the Python an
 boundary, plus a server-rendered approval dashboard with scoped reviewer sessions and CSRF
 protection. A PostgreSQL backend lets multiple service processes share the same transaction-safe
 approval, replay, control, and audit state; see the [PostgreSQL guide](docs/postgresql.md).
+Signed Slack approvals can deliver exact pending actions to a private channel, authorize only
+configured member IDs, reject forged or replayed interactions, and record the Slack identity in the
+runtime receipt; see the [Slack guide](docs/slack.md).
 
 > **Status:** early development. The public adapter contract is usable, but compatibility should
 > be pinned until the first stable release.
@@ -59,6 +62,8 @@ approval, replay, control, and audit state; see the [PostgreSQL guide](docs/post
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/dashboard.md">Dashboard</a>
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/postgresql.md">PostgreSQL</a>
+  ·
+  <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/slack.md">Slack</a>
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/webhooks.md">Webhooks</a>
   ·
@@ -195,6 +200,22 @@ Durable outbound webhooks can notify a separate approval UI, queue, SIEM, or inc
 They use HMAC-SHA256 signatures, automatic and configured secret redaction, bounded retries,
 crash-safe claims, stable event IDs, and explicit dead-letter recovery. See the
 [signed webhook guide](docs/webhooks.md).
+
+Pending actions can also be reviewed in a private Slack channel. The integration verifies Slack's
+signature over the exact request body, checks a strict workspace/member allowlist, binds every
+button to the posted message and runtime request digest, and durably retries notifications:
+
+```bash
+agentbarrier slack serve \
+  --db agentbarrier.db \
+  --state-db agentbarrier-slack.db \
+  --config slack.json
+```
+
+Arguments that do not fit completely in Slack are posted without decision buttons. Bot and signing
+credentials are read only from environment variables named by the config. See the
+[Slack approval guide](docs/slack.md) for app setup, HTTPS ingress, reviewer permissions, recovery,
+and residual risks.
 
 OpenAI Agents Python, LangGraph, PydanticAI, and Google ADK applications can construct normal
 framework tools whose original Python callables are protected by the same durable runtime boundary.

@@ -372,6 +372,62 @@ def build_parser() -> argparse.ArgumentParser:
     webhook_retry.add_argument("--endpoint", required=True, help="configured endpoint id")
     webhook_retry.add_argument("--state-db", required=True, metavar="PATH")
     webhook_retry.set_defaults(handler=_run_webhook_retry)
+
+    slack = commands.add_parser("slack", help="deliver and decide approvals in Slack")
+    slack_commands = slack.add_subparsers(dest="slack_command", required=True)
+
+    slack_serve = slack_commands.add_parser(
+        "serve",
+        help="run signed Slack interactions and the durable notification worker",
+    )
+    _add_runtime_db_option(slack_serve)
+    slack_serve.add_argument(
+        "--state-db",
+        required=True,
+        metavar="PATH",
+        help="separate durable Slack notification database",
+    )
+    slack_serve.add_argument(
+        "--config",
+        required=True,
+        metavar="PATH",
+        help="strict Slack workspace, reviewer, and secret environment config",
+    )
+    slack_serve.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="listen host (default: 127.0.0.1)",
+    )
+    slack_serve.add_argument("--port", type=int, default=8789, help="listen port (default: 8789)")
+    slack_serve.add_argument(
+        "--interaction-path",
+        default="/slack/interactions",
+        help="signed Slack endpoint path (default: /slack/interactions)",
+    )
+    slack_serve.add_argument(
+        "--poll-interval",
+        type=float,
+        default=1.0,
+        metavar="SECONDS",
+        help="notification polling interval (default: 1)",
+    )
+    slack_serve.set_defaults(handler=_run_slack_service)
+
+    slack_status = slack_commands.add_parser(
+        "status",
+        help="inspect durable Slack notification state",
+    )
+    slack_status.add_argument("--state-db", required=True, metavar="PATH")
+    slack_status.add_argument("--json", action="store_true", help="write JSON to stdout")
+    slack_status.set_defaults(handler=_run_slack_status)
+
+    slack_retry = slack_commands.add_parser(
+        "retry",
+        help="requeue one exact dead Slack notification",
+    )
+    slack_retry.add_argument("action_id", help="runtime action id")
+    slack_retry.add_argument("--state-db", required=True, metavar="PATH")
+    slack_retry.set_defaults(handler=_run_slack_retry)
     return parser
 
 
@@ -952,6 +1008,81 @@ def _run_webhook_retry(arguments: argparse.Namespace) -> int:
         event_id=cast(str, arguments.event_id),
     )
     print(f"requeued {delivery.event_id} for endpoint {delivery.endpoint_id}")
+    return 0
+
+
+def _run_slack_service(arguments: argparse.Namespace) -> int:
+    try:
+        from agentbarrier.service.runner import run_slack_service
+    except ImportError as error:
+        raise ImportError(
+            "Slack dependencies are unavailable; install 'agentbarrier[slack]'"
+        ) from error
+    run_slack_service(
+        database_path=cast(str | None, arguments.db),
+        state_path=cast(str, arguments.state_db),
+        config_path=cast(str, arguments.config),
+        postgres_dsn_env=cast(str | None, arguments.postgres_dsn_env),
+        postgres_schema=cast(str, arguments.postgres_schema),
+        host=cast(str, arguments.host),
+        port=cast(int, arguments.port),
+        interaction_path=cast(str, arguments.interaction_path),
+        poll_interval_seconds=cast(float, arguments.poll_interval),
+    )
+    return 0
+
+
+def _run_slack_status(arguments: argparse.Namespace) -> int:
+    try:
+        from agentbarrier.service.runner import slack_notification_status
+    except ImportError as error:
+        raise ImportError(
+            "Slack dependencies are unavailable; install 'agentbarrier[slack]'"
+        ) from error
+    snapshots = slack_notification_status(cast(str, arguments.state_db))
+    payload = [
+        {
+            "action_id": item.action_id,
+            "request_digest": item.request_digest,
+            "channel_id": item.channel_id,
+            "status": item.status,
+            "attempts": item.attempts,
+            "next_attempt_at_ns": item.next_attempt_at_ns,
+            "message_ts": item.message_ts,
+            "last_status_code": item.last_status_code,
+            "last_error": item.last_error,
+            "decided_by": item.decided_by,
+            "decision": item.decision,
+        }
+        for item in snapshots
+    ]
+    if arguments.json:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+    if not payload:
+        print("No Slack notifications found.")
+        return 0
+    print(f"{'ACTION ID':36}  {'STATUS':10}  ATTEMPTS  MESSAGE TS")
+    for item in payload:
+        print(
+            f"{item['action_id']:36}  {item['status']:10}  "
+            f"{item['attempts']:8}  {item['message_ts'] or '-'}"
+        )
+    return 0
+
+
+def _run_slack_retry(arguments: argparse.Namespace) -> int:
+    try:
+        from agentbarrier.service.runner import retry_slack_notification
+    except ImportError as error:
+        raise ImportError(
+            "Slack dependencies are unavailable; install 'agentbarrier[slack]'"
+        ) from error
+    notification = retry_slack_notification(
+        cast(str, arguments.state_db),
+        action_id=cast(str, arguments.action_id),
+    )
+    print(f"requeued Slack notification for action {notification.action_id}")
     return 0
 
 

@@ -85,7 +85,7 @@ Release gates:
 - accessibility, authorization, cross-site request forgery, content-security-policy, and secret
   handling checks pass for the dashboard;
 - SQLite and PostgreSQL pass the same store contract and concurrency suite;
-- forged, replayed, expired, and unauthorized Slack requests are rejected.
+- forged, replayed, expired, and unauthorized Slack requests are rejected;
 - limits remain atomic under concurrent workers and the emergency pause fails closed.
 
 The main branch now contains durable scoped emergency pauses with atomic fixed-window action and
@@ -93,7 +93,9 @@ integer-value budgets; a server-rendered approval dashboard with opaque scoped s
 identity-bound decisions, CSRF protection, browser isolation headers, responsive accessible markup,
 and a clean-wheel lifecycle audit; and a PostgreSQL store with explicit migrations,
 cross-process transaction locking, SQLite contract parity, service integration, and a clean-wheel
-lifecycle audit. Slack and broader deployment work remain.
+lifecycle audit; and signed Slack notifications with exact message/request binding, configured
+member permissions, durable retries, interaction replay protection, and a clean-wheel approval
+audit. Broader stable deployment work remains for 1.0.
 
 ## 1.0.0 — stable production contract
 

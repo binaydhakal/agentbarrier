@@ -16,6 +16,15 @@ from agentbarrier.service.dashboard import (
     DashboardSessionStore,
     create_dashboard_app,
 )
+from agentbarrier.service.slack import (
+    SlackConfig,
+    SlackInteractionService,
+    SlackNotificationSnapshot,
+    SlackNotificationStore,
+    SlackReviewer,
+    SlackWorker,
+    create_slack_app,
+)
 
 __all__ = [
     "ALL_SERVICE_SCOPES",
@@ -24,8 +33,15 @@ __all__ = [
     "DashboardSession",
     "DashboardSessionStore",
     "Principal",
+    "SlackConfig",
+    "SlackInteractionService",
+    "SlackNotificationSnapshot",
+    "SlackNotificationStore",
+    "SlackReviewer",
+    "SlackWorker",
     "StaticBearerAuth",
     "create_approval_app",
     "create_dashboard_app",
+    "create_slack_app",
     "hash_bearer_token",
 ]
