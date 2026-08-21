@@ -4,9 +4,9 @@ Framework runtime integrations put AgentBarrier immediately around a framework t
 Python callable. They are different from the compatibility adapters in `agentbarrier.adapters`,
 which exercise deterministic sentinel tools to test framework lifecycle guarantees.
 
-The development integrations support OpenAI Agents Python and LangGraph. Other evaluated frameworks
-remain 0.5.0 release work where their real callable boundary can be protected without weakening the
-runtime contract.
+The development integrations support OpenAI Agents Python, LangGraph, and PydanticAI. Other
+evaluated frameworks remain 0.5.0 release work where their real callable boundary can be protected
+without weakening the runtime contract.
 
 ## OpenAI Agents Python
 
@@ -236,3 +236,111 @@ successful protected result.
 As with the OpenAI integration, complete mediation is an application responsibility: every route
 to the consequential client must use the returned tool, while the original callable and downstream
 credentials remain inaccessible to model-controlled code.
+
+## PydanticAI
+
+> This integration is under development for AgentBarrier 0.5.0 and currently targets
+> `pydantic-ai-slim>=2.32,<3` on Python 3.10–3.13. Pin an exact pre-3.0 version and run
+> application-specific tests before connecting consequential tools.
+
+PydanticAI's `Tool` class derives model-visible parameters from a Python function and hides its
+injected `RunContext`. AgentBarrier's `runtime_tool` returns that normal `Tool`, while policy,
+approval, exact binding, execution claims, result replay, and receipts surround the original async
+callable. See Pydantic's official [function tools guide](https://pydantic.dev/docs/ai/tools-toolsets/tools/).
+
+Install the optional integration:
+
+```bash
+python -m pip install 'agentbarrier[pydantic-ai]'
+```
+
+Build and register a protected tool:
+
+```python
+from dataclasses import dataclass
+from typing import Any
+
+from pydantic_ai import Agent, RunContext
+
+from agentbarrier.integrations.pydantic_ai import runtime_tool
+from agentbarrier.runtime import RuntimeBarrier, RuntimePolicy, SQLiteRuntimeStore
+
+
+@dataclass
+class Dependencies:
+    payment_client: Any
+
+
+async def refund_payment(
+    context: RunContext[Dependencies],
+    request_id: str,
+    amount: int,
+) -> dict[str, object]:
+    """Refund one exact payment request."""
+    return await context.deps.payment_client.refund(request_id=request_id, amount=amount)
+
+
+store = SQLiteRuntimeStore("agentbarrier.db")
+barrier = RuntimeBarrier(
+    policy=RuntimePolicy.from_file("policy.json"),
+    store=store,
+    namespace="support-agent",
+)
+refund_tool = runtime_tool(
+    refund_payment,
+    barrier=barrier,
+    idempotency_key="request_id",
+    name="payments_refund",
+    description="Refund one exact payment request.",
+)
+agent = Agent(
+    "openai:gpt-5.4",
+    deps_type=Dependencies,
+    tools=[refund_tool],
+)
+```
+
+Keep the store open for the service lifetime. A gated call raises AgentBarrier's
+`ApprovalRequired` to the host before `refund_payment` runs. After an authenticated reviewer
+approves the durable action, retry or resume using the same `request_id` and exact arguments. A new
+PydanticAI `context.tool_call_id`, run ID, or conversation ID does not change business identity.
+
+### Async and fail-closed settings
+
+The integration accepts async functions only. PydanticAI normally moves synchronous tools to a
+worker thread; cancelling the agent cannot reliably stop a thread from committing a late effect.
+Async alone is not magic—the function must still use cancellation-aware I/O and must not hide
+blocking work—but it allows host cancellation to reach AgentBarrier and produce durable `unknown`
+state when completion cannot be proven.
+
+Several PydanticAI controls are fixed or rejected:
+
+- `requires_approval` remains false so AgentBarrier is the only approval authority.
+- `timeout` remains `None`; PydanticAI converts a per-tool timeout into `ModelRetry`, which could ask
+  the model to repeat an uncertain effect. Apply the timeout outside `agent.run()` instead.
+- `max_retries` is fixed to zero. Validation and application-specific retry decisions belong before
+  the consequential boundary.
+- `prepare`, custom `function_schema`, explicit `takes_ctx`, and custom `schema_generator` are
+  rejected because they can rename the tool or make the model schema differ from the arguments
+  reviewed by policy.
+
+Do not place the returned tool inside a `FunctionToolset` with a toolset-level timeout. Do not use
+execution hooks that convert protected-tool exceptions into model-visible results. Argument
+validators run before the protected callable and may reject malformed input, but they must not
+perform consequential effects themselves.
+
+If the original callable raises PydanticAI's `ModelRetry`, `ToolFailed`, `ApprovalRequired`, or
+`CallDeferred` after AgentBarrier claims the action, the integration raises
+`FrameworkControlSignalError` instead. The action is recorded as `unknown`, and the host must
+reconcile it from downstream evidence. This prevents a framework recovery signal from silently
+becoming a model retry or a second approval system.
+
+The tool's parameters and result must be JSON-compatible with AgentBarrier's durable store. The
+current integration requires one schema property per original non-context argument; PydanticAI's
+flattened single-model-parameter schema is rejected. Generator functions, async-generator
+functions, opaque callable objects, and synchronous functions are also rejected.
+
+The test suite runs a real PydanticAI `Agent`, `Tool`, `RunContext`, and credential-free
+`FunctionModel` through approval, execution, replay, binding conflict, cancellation, post-claim
+failure, and suppressed framework retry. Complete mediation still requires the application to keep
+the original callable and downstream credentials outside every model-controlled route.

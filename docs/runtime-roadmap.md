@@ -57,9 +57,9 @@ Deliverables:
 - protocol-level conformance fixtures that do not require model credentials.
 
 The development branch now has the transport-neutral runtime boundary, MCP tool gateway, scoped
-approval API, durable signed webhook worker, and OpenAI Agents and LangGraph runtime tool builders.
-Raw transport conformance and remaining framework runtime adapters remain release gates. The core
-and LangGraph lifecycles now run from the built wheel in package CI.
+approval API, durable signed webhook worker, and OpenAI Agents, LangGraph, and PydanticAI runtime
+tool builders. Raw transport conformance and remaining framework runtime adapters remain release
+gates. The core, LangGraph, and PydanticAI lifecycles now run from the built wheel in package CI.
 
 Release gates:
 

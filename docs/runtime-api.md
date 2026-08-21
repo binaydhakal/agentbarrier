@@ -160,6 +160,9 @@ All runtime exceptions derive from `RuntimeBarrierError` in `agentbarrier.errors
   and `ActionOutcomeUnknown` include the current `RuntimeAction` as `.action`.
 - `ActionBindingError` means an idempotency key or execution digest was reused with different bound
   data.
+- `FrameworkControlSignalError` means a claimed framework tool emitted a retry, failure, approval,
+  or deferral signal that could otherwise trigger unsafe model-visible recovery. The durable action
+  remains `unknown` and requires reconciliation.
 - `InvalidActionState` means the requested lifecycle transition is not legal.
 
 Treat `ActionOutcomeUnknown` as an operations event. Do not convert it into an automatic retry.

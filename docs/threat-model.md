@@ -117,6 +117,11 @@ command, URL, API token, or network route remains available to the agent.
   Its fail-closed `ToolNode` disables exception-to-message conversion because every exception after
   an execution claim may represent an unknown outcome. Middleware that catches those exceptions or
   any route that calls the original function can bypass that protection.
+- The PydanticAI runtime builder excludes injected `RunContext`, requires async callables, disables
+  native approval, per-tool timeout, and retries, and translates framework control signals raised
+  after a claim into a host-visible runtime failure. Toolset-level timeouts, execution hooks that
+  convert exceptions, synchronous or blocking work inside an async function, and direct access to
+  the original callable remain application-controlled bypass or late-effect risks.
 
 ## Out of scope
 

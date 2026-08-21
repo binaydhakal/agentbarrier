@@ -30,6 +30,9 @@ All notable changes to this project will be documented in this file. The format 
 - LangGraph runtime tool and fail-closed `ToolNode` builders with injected `ToolRuntime` exclusion,
   business idempotency across model retries, durable approval and replay, and unknown-outcome error
   propagation to the host application.
+- PydanticAI runtime tool builder with `RunContext` exclusion, async cancellation safety, business
+  idempotency, durable approval and replay, and suppression of framework retry, failure, and
+  deferred-call signals after an execution claim.
 
 ## [0.4.0] - 2026-08-20
 

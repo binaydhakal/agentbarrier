@@ -42,6 +42,17 @@ class RuntimeBarrierError(AgentBarrierError):
     """Base exception for runtime policy and execution failures."""
 
 
+class FrameworkControlSignalError(RuntimeBarrierError):
+    """Raised when a claimed tool emits a framework signal that could trigger unsafe recovery."""
+
+    def __init__(self, framework: str, signal: str) -> None:
+        super().__init__(
+            f"{framework} control signal {signal!r} was suppressed after the runtime claim"
+        )
+        self.framework = framework
+        self.signal = signal
+
+
 class RuntimeActionError(RuntimeBarrierError):
     """Base exception carrying the durable runtime action that failed closed."""
 
