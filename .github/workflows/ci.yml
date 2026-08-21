@@ -255,7 +255,8 @@ jobs:
             postgres psql \
             --username agentbarrier_runtime \
             --dbname agentbarrier \
-            --command "SELECT CASE WHEN has_schema_privilege(current_user, 'agentbarrier', 'USAGE') AND NOT has_schema_privilege(current_user, 'agentbarrier', 'CREATE') THEN 1 ELSE 1 / 0 END;"
+            --set ON_ERROR_STOP=1 \
+            --command "DO \$\$ BEGIN IF NOT (has_schema_privilege(current_user, 'agentbarrier', 'USAGE') AND NOT has_schema_privilege(current_user, 'agentbarrier', 'CREATE')) THEN RAISE EXCEPTION 'runtime role schema privileges are unsafe'; END IF; END \$\$;"
       - name: Remove deployment audit resources
         if: always()
         run: >-
