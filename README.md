@@ -36,14 +36,15 @@ in SQLite, prevents duplicate execution, and emits integrity-linked audit receip
 [runtime guide](https://github.com/binaydhakal/agentbarrier/blob/main/docs/runtime.md).
 The [runtime API reference](https://github.com/binaydhakal/agentbarrier/blob/main/docs/runtime-api.md)
 documents the public classes, lifecycle, and failure contract.
-The main branch is developing 0.5.0, which adds a deployable
+The main branch adds a deployable
 [MCP policy gateway](https://github.com/binaydhakal/agentbarrier/blob/main/docs/mcp-gateway.md)
 using the current MCP 2026-07-28 protocol through its official Python SDK, an authenticated
 approval API, and [durable signed webhooks](docs/webhooks.md) for approval and operations systems.
-The next production-control work is also available on the main branch: durable emergency pauses
+Production-control work is also available on the main branch: durable emergency pauses
 and atomic fixed-window action or integer-value limits enforced by the Python and MCP execution
 boundary, plus a server-rendered approval dashboard with scoped reviewer sessions and CSRF
-protection.
+protection. A PostgreSQL backend lets multiple service processes share the same transaction-safe
+approval, replay, control, and audit state; see the [PostgreSQL guide](docs/postgresql.md).
 
 > **Status:** early development. The public adapter contract is usable, but compatibility should
 > be pinned until the first stable release.
@@ -56,6 +57,8 @@ protection.
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/approval-api.md">Approval API</a>
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/dashboard.md">Dashboard</a>
+  ·
+  <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/postgresql.md">PostgreSQL</a>
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/webhooks.md">Webhooks</a>
   ·
@@ -181,6 +184,12 @@ agentbarrier dashboard \
 The local service opens at `http://127.0.0.1:8788/dashboard/`. Remote use requires HTTPS, secure
 cookies, a fixed public origin, and trusted rate-limited ingress. See the
 [approval dashboard guide](docs/dashboard.md) for scopes, deployment, and session limitations.
+
+For a shared team deployment, install the `postgres` extra, provision the schema with the explicit
+`database migrate` command, and give live services a separate least-privilege database identity.
+Connection strings are read from a named environment variable and are never accepted as CLI
+arguments. The [PostgreSQL guide](docs/postgresql.md) covers migration, concurrency, backup, and
+restore operations.
 
 Durable outbound webhooks can notify a separate approval UI, queue, SIEM, or incident workflow.
 They use HMAC-SHA256 signatures, automatic and configured secret redaction, bounded retries,

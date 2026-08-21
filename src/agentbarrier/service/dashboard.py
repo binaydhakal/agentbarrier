@@ -30,7 +30,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from agentbarrier.errors import InvalidActionState, RuntimeActionError
 from agentbarrier.models import Decision
-from agentbarrier.runtime import RuntimeAction, RuntimeStatus, SQLiteRuntimeStore
+from agentbarrier.runtime import RuntimeAction, RuntimeStatus, RuntimeStore
 from agentbarrier.service.auth import AuthenticationError, Principal, StaticBearerAuth
 
 _MAX_FORM_BYTES = 16 * 1024
@@ -239,7 +239,7 @@ class ApprovalDashboard:
     def __init__(
         self,
         *,
-        store: SQLiteRuntimeStore,
+        store: RuntimeStore,
         auth: StaticBearerAuth,
         sessions: DashboardSessionStore | None = None,
         cookie_secure: bool = True,
@@ -648,7 +648,7 @@ class ApprovalDashboard:
 
 def create_dashboard_app(
     *,
-    store: SQLiteRuntimeStore,
+    store: RuntimeStore,
     auth: StaticBearerAuth,
     sessions: DashboardSessionStore | None = None,
     cookie_secure: bool = True,

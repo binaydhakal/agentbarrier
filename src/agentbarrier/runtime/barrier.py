@@ -22,7 +22,7 @@ from agentbarrier.runtime.models import (
     canonical_json,
 )
 from agentbarrier.runtime.policy import RuntimePolicy
-from agentbarrier.runtime.store import SQLiteRuntimeStore
+from agentbarrier.runtime.protocol import RuntimeStore
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -36,7 +36,7 @@ class RuntimeBarrier:
         self,
         *,
         policy: RuntimePolicy,
-        store: SQLiteRuntimeStore,
+        store: RuntimeStore,
         namespace: str = "default",
         clock_ns: Callable[[], int] = time.time_ns,
     ) -> None:

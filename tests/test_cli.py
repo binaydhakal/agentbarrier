@@ -220,10 +220,43 @@ def test_approval_api_cli_uses_safe_listen_defaults(
         {
             "database_path": str(database),
             "auth_path": str(auth_config),
+            "postgres_dsn_env": None,
+            "postgres_schema": "agentbarrier",
             "host": "127.0.0.1",
             "port": 8787,
         }
     ]
+
+
+def test_approval_api_cli_forwards_postgres_environment_name_without_a_dsn(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        service_runner,
+        "run_approval_api",
+        lambda **keywords: captured.append(keywords),
+    )
+
+    assert (
+        main(
+            [
+                "api",
+                "--postgres-dsn-env",
+                "AGENTBARRIER_DATABASE_URL",
+                "--postgres-schema",
+                "agentbarrier_team",
+                "--auth-config",
+                str(tmp_path / "auth.json"),
+            ]
+        )
+        == 0
+    )
+    assert captured[0]["database_path"] is None
+    assert captured[0]["postgres_dsn_env"] == "AGENTBARRIER_DATABASE_URL"
+    assert captured[0]["postgres_schema"] == "agentbarrier_team"
+    assert "postgresql://" not in repr(captured)
 
 
 def test_dashboard_cli_forwards_secure_operational_configuration(
@@ -263,6 +296,8 @@ def test_dashboard_cli_forwards_secure_operational_configuration(
         {
             "database_path": str(database),
             "auth_path": str(auth_config),
+            "postgres_dsn_env": None,
+            "postgres_schema": "agentbarrier",
             "host": "10.0.0.5",
             "port": 9443,
             "public_origin": "https://review.example.com",
@@ -763,6 +798,8 @@ def test_webhook_run_cli_passes_operational_configuration(
             "database_path": str(database),
             "state_path": str(state_database),
             "config_path": str(config),
+            "postgres_dsn_env": None,
+            "postgres_schema": "agentbarrier",
             "once": True,
             "poll_interval_seconds": 0.25,
         }

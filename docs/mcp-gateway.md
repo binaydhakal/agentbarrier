@@ -212,11 +212,14 @@ the final side-effecting tool or reconcile the unknown action before any retry.
 1. Clients connect only to the gateway, never directly to the upstream server.
 2. Upstream credentials are available only to the gateway service account.
 3. Agent, reviewer, and audit identities use separate least-privilege bearer tokens.
-4. Policy, auth, and SQLite files are outside model-writable directories with restrictive
-   permissions.
+4. Policy, auth, and SQLite files or PostgreSQL credentials are outside model-writable locations
+   with restrictive permissions.
 5. Every consequential call supplies a real business idempotency key.
 6. Policy defaults to deny and policy changes use a new version.
 7. Operators alert on `unknown`, binding violations, repeated denials, and a broken receipt chain.
 8. The external system supports lookup or reconciliation using the same business key.
 
 See the [runtime threat model](threat-model.md) for the broader trust boundary.
+
+For multi-process gateways, replace `--db` with `--postgres-dsn-env NAME` and optionally select a
+dedicated `--postgres-schema`. Provision it first using the [PostgreSQL guide](postgresql.md).

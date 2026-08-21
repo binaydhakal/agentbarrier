@@ -1,6 +1,7 @@
 """Runtime enforcement for consequential AI-agent tool calls."""
 
 from agentbarrier.runtime.barrier import IdempotencySelector, RuntimeBarrier
+from agentbarrier.runtime.factory import open_runtime_store
 from agentbarrier.runtime.models import (
     ClaimOutcome,
     ConditionOperator,
@@ -19,6 +20,8 @@ from agentbarrier.runtime.models import (
     RuntimeStatus,
 )
 from agentbarrier.runtime.policy import ArgumentCondition, PolicyRule, RuntimePolicy
+from agentbarrier.runtime.postgres import PostgresRuntimeStore
+from agentbarrier.runtime.protocol import RuntimeStore
 from agentbarrier.runtime.store import SQLiteRuntimeStore
 
 __all__ = [
@@ -29,6 +32,7 @@ __all__ = [
     "PolicyDecision",
     "PolicyEffect",
     "PolicyRule",
+    "PostgresRuntimeStore",
     "RuntimeAction",
     "RuntimeBarrier",
     "RuntimeControlEvent",
@@ -42,5 +46,7 @@ __all__ = [
     "RuntimeReconciliation",
     "RuntimeRequest",
     "RuntimeStatus",
+    "RuntimeStore",
     "SQLiteRuntimeStore",
+    "open_runtime_store",
 ]

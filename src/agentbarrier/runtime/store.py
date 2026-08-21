@@ -1,4 +1,4 @@
-"""Durable SQLite state and integrity-linked receipts for runtime actions."""
+"""Shared SQL runtime state and the durable SQLite implementation."""
 
 from __future__ import annotations
 
@@ -7,12 +7,12 @@ import math
 import sqlite3
 import threading
 import time
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import closing, contextmanager
 from hashlib import sha256
 from pathlib import Path
 from types import TracebackType
-from typing import cast
+from typing import Any, Protocol, TypeVar, cast
 
 from agentbarrier.errors import (
     ActionBindingError,
@@ -50,11 +50,39 @@ from agentbarrier.runtime.models import (
 
 _SCHEMA_VERSION = "4"
 _GLOBAL_SCOPE = ""
-_SQLITE_MAX_INTEGER = 9_223_372_036_854_775_807
+_MAX_SQL_INTEGER = 9_223_372_036_854_775_807
 
 
-class SQLiteRuntimeStore:
-    """Concurrency-safe runtime state stored in one SQLite database."""
+class _SQLRow(Protocol):
+    def __getitem__(self, key: str) -> Any: ...
+
+
+class _SQLCursor(Protocol):
+    rowcount: int
+
+    def fetchone(self) -> _SQLRow | None: ...
+
+    def fetchall(self) -> list[_SQLRow]: ...
+
+
+class _SQLConnection(Protocol):
+    def execute(
+        self,
+        statement: str,
+        parameters: Sequence[object] = (),
+    ) -> _SQLCursor: ...
+
+    def close(self) -> None: ...
+
+
+_StoreT = TypeVar("_StoreT", bound="_SQLRuntimeStore")
+
+
+class _SQLRuntimeStore:
+    """Shared transaction-safe runtime behavior for supported SQL databases."""
+
+    _connection: _SQLConnection
+    _sqlite_connection: sqlite3.Connection
 
     def __init__(
         self,
@@ -63,26 +91,41 @@ class SQLiteRuntimeStore:
         clock_ns: Callable[[], int] = time.time_ns,
         execution_lease_seconds: float = 300,
     ) -> None:
-        if not math.isfinite(execution_lease_seconds) or execution_lease_seconds <= 0:
-            raise ValueError("execution_lease_seconds must be finite and greater than zero")
-        self.path = str(path)
-        self._clock_ns = clock_ns
-        self._execution_lease_ns = int(execution_lease_seconds * 1_000_000_000)
-        if self._execution_lease_ns < 1:
-            raise ValueError("execution_lease_seconds must be at least one nanosecond")
-        self._lock = threading.RLock()
-        self._connection = sqlite3.connect(
+        self._configure_runtime_store(
+            identifier=str(path),
+            clock_ns=clock_ns,
+            execution_lease_seconds=execution_lease_seconds,
+        )
+        sqlite_connection = sqlite3.connect(
             self.path,
             check_same_thread=False,
             isolation_level=None,
             timeout=30,
         )
-        self._connection.row_factory = sqlite3.Row
-        self._connection.execute("PRAGMA journal_mode=WAL")
-        self._connection.execute("PRAGMA synchronous=FULL")
-        self._connection.execute("PRAGMA foreign_keys=ON")
-        self._connection.execute("PRAGMA busy_timeout=30000")
+        sqlite_connection.row_factory = sqlite3.Row
+        sqlite_connection.execute("PRAGMA journal_mode=WAL")
+        sqlite_connection.execute("PRAGMA synchronous=FULL")
+        sqlite_connection.execute("PRAGMA foreign_keys=ON")
+        sqlite_connection.execute("PRAGMA busy_timeout=30000")
+        self._sqlite_connection = sqlite_connection
+        self._connection = cast(_SQLConnection, sqlite_connection)
         self._initialize_schema()
+
+    def _configure_runtime_store(
+        self,
+        *,
+        identifier: str,
+        clock_ns: Callable[[], int],
+        execution_lease_seconds: float,
+    ) -> None:
+        if not math.isfinite(execution_lease_seconds) or execution_lease_seconds <= 0:
+            raise ValueError("execution_lease_seconds must be finite and greater than zero")
+        self.path = identifier
+        self._clock_ns = clock_ns
+        self._execution_lease_ns = int(execution_lease_seconds * 1_000_000_000)
+        if self._execution_lease_ns < 1:
+            raise ValueError("execution_lease_seconds must be at least one nanosecond")
+        self._lock = threading.RLock()
 
     def _initialize_schema(self) -> None:
         with self._transaction():
@@ -296,7 +339,11 @@ class SQLiteRuntimeStore:
                 self._connection.execute("ROLLBACK")
                 raise
             else:
-                self._connection.execute("COMMIT")
+                try:
+                    self._connection.execute("COMMIT")
+                except BaseException:
+                    self._connection.execute("ROLLBACK")
+                    raise
 
     def submit(self, request: RuntimeRequest, decision: PolicyDecision) -> RuntimeAction:
         """Create an action once, or return the exact existing idempotent action."""
@@ -536,20 +583,20 @@ class SQLiteRuntimeStore:
         window_ns = int(window_seconds * 1_000_000_000)
         if window_ns < 1:
             raise ValueError("window_seconds must be at least one nanosecond")
-        if window_ns > _SQLITE_MAX_INTEGER:
-            raise ValueError("window_seconds exceeds SQLite's integer range")
+        if window_ns > _MAX_SQL_INTEGER:
+            raise ValueError("window_seconds exceeds the supported 64-bit integer range")
         if max_actions is not None and (
             isinstance(max_actions, bool)
             or not isinstance(max_actions, int)
             or max_actions < 1
-            or max_actions > _SQLITE_MAX_INTEGER
+            or max_actions > _MAX_SQL_INTEGER
         ):
             raise ValueError("max_actions must be a positive integer within SQLite's range")
         if max_value is not None and (
             isinstance(max_value, bool)
             or not isinstance(max_value, int)
             or max_value < 1
-            or max_value > _SQLITE_MAX_INTEGER
+            or max_value > _MAX_SQL_INTEGER
         ):
             raise ValueError("max_value must be a positive integer within SQLite's range")
         if (value_argument is None) != (max_value is None):
@@ -1072,7 +1119,7 @@ class SQLiteRuntimeStore:
             created = True
             destination_path.chmod(0o600)
             with self._lock, closing(sqlite3.connect(destination_path)) as backup_connection:
-                self._connection.backup(backup_connection)
+                self._sqlite_connection.backup(backup_connection)
                 integrity = backup_connection.execute("PRAGMA integrity_check").fetchone()
                 if integrity is None or str(integrity[0]) != "ok":
                     raise RuntimeError("runtime database backup failed its integrity check")
@@ -1082,7 +1129,7 @@ class SQLiteRuntimeStore:
             raise
         return destination_path
 
-    def _matching_pause(self, action: RuntimeAction) -> sqlite3.Row | None:
+    def _matching_pause(self, action: RuntimeAction) -> _SQLRow | None:
         row = self._connection.execute(
             """
             SELECT * FROM runtime_pauses
@@ -1092,7 +1139,7 @@ class SQLiteRuntimeStore:
             """,
             (_GLOBAL_SCOPE, action.namespace, _GLOBAL_SCOPE, action.tool_name),
         ).fetchone()
-        return cast(sqlite3.Row | None, row)
+        return row
 
     def _reserve_limit_capacity(
         self,
@@ -1166,8 +1213,8 @@ class SQLiteRuntimeStore:
                     limit_id, window_started_at_ns, actions_used, value_used
                 ) VALUES (?, ?, ?, ?)
                 ON CONFLICT (limit_id, window_started_at_ns) DO UPDATE SET
-                    actions_used = actions_used + excluded.actions_used,
-                    value_used = value_used + excluded.value_used
+                    actions_used = runtime_limit_usage.actions_used + excluded.actions_used,
+                    value_used = runtime_limit_usage.value_used + excluded.value_used
                 """,
                 (limit_id, window_started_at_ns, actions_reserved, value_reserved),
             )
@@ -1336,7 +1383,7 @@ class SQLiteRuntimeStore:
             path="control scope",
         )
 
-    def _refresh_expiry(self, row: sqlite3.Row, *, now: int) -> sqlite3.Row:
+    def _refresh_expiry(self, row: _SQLRow, *, now: int) -> _SQLRow:
         status = RuntimeStatus(str(row["status"]))
         expires_at = row["expires_at_ns"]
         if (
@@ -1359,7 +1406,7 @@ class SQLiteRuntimeStore:
             return self._require_row(str(row["action_id"]))
         return row
 
-    def _refresh_state(self, row: sqlite3.Row, *, now: int) -> sqlite3.Row:
+    def _refresh_state(self, row: _SQLRow, *, now: int) -> _SQLRow:
         row = self._refresh_expiry(row, now=now)
         status = RuntimeStatus(str(row["status"]))
         lease_expires = row["execution_lease_expires_at_ns"]
@@ -1470,24 +1517,24 @@ class SQLiteRuntimeStore:
         )
         return sha256(payload.encode("utf-8")).hexdigest()
 
-    def _require_row(self, action_id: str) -> sqlite3.Row:
+    def _require_row(self, action_id: str) -> _SQLRow:
         row = self._connection.execute(
             "SELECT * FROM runtime_actions WHERE action_id = ?", (action_id,)
         ).fetchone()
         if row is None:
             raise KeyError(f"unknown runtime action {action_id!r}")
-        return cast(sqlite3.Row, row)
+        return row
 
-    def _require_limit_row(self, limit_id: str) -> sqlite3.Row:
+    def _require_limit_row(self, limit_id: str) -> _SQLRow:
         row = self._connection.execute(
             "SELECT * FROM runtime_limits WHERE limit_id = ?", (limit_id,)
         ).fetchone()
         if row is None:
             raise KeyError(f"unknown runtime limit {limit_id!r}")
-        return cast(sqlite3.Row, row)
+        return row
 
     @staticmethod
-    def _row_to_action(row: sqlite3.Row) -> RuntimeAction:
+    def _row_to_action(row: _SQLRow) -> RuntimeAction:
         result_json = row["result_json"]
         return RuntimeAction(
             action_id=str(row["action_id"]),
@@ -1521,7 +1568,7 @@ class SQLiteRuntimeStore:
         )
 
     @staticmethod
-    def _row_to_receipt(row: sqlite3.Row) -> RuntimeReceipt:
+    def _row_to_receipt(row: _SQLRow) -> RuntimeReceipt:
         return RuntimeReceipt(
             sequence=int(row["sequence"]),
             action_id=str(row["action_id"]),
@@ -1535,7 +1582,7 @@ class SQLiteRuntimeStore:
         )
 
     @staticmethod
-    def _row_to_pause(row: sqlite3.Row) -> RuntimePause:
+    def _row_to_pause(row: _SQLRow) -> RuntimePause:
         namespace = str(row["namespace"])
         tool_name = str(row["tool_name"])
         return RuntimePause(
@@ -1547,7 +1594,7 @@ class SQLiteRuntimeStore:
         )
 
     @staticmethod
-    def _row_to_limit(row: sqlite3.Row) -> RuntimeLimit:
+    def _row_to_limit(row: _SQLRow) -> RuntimeLimit:
         namespace = str(row["namespace"])
         tool_name = str(row["tool_name"])
         return RuntimeLimit(
@@ -1567,7 +1614,7 @@ class SQLiteRuntimeStore:
         )
 
     @staticmethod
-    def _row_to_control_receipt(row: sqlite3.Row) -> RuntimeControlReceipt:
+    def _row_to_control_receipt(row: _SQLRow) -> RuntimeControlReceipt:
         return RuntimeControlReceipt(
             sequence=int(row["sequence"]),
             event=RuntimeControlEvent(str(row["event"])),
@@ -1580,12 +1627,12 @@ class SQLiteRuntimeStore:
         )
 
     def close(self) -> None:
-        """Close the SQLite connection."""
+        """Close the database connection."""
 
         with self._lock:
             self._connection.close()
 
-    def __enter__(self) -> SQLiteRuntimeStore:
+    def __enter__(self: _StoreT) -> _StoreT:
         return self
 
     def __exit__(
@@ -1595,3 +1642,7 @@ class SQLiteRuntimeStore:
         _traceback: TracebackType | None,
     ) -> None:
         self.close()
+
+
+class SQLiteRuntimeStore(_SQLRuntimeStore):
+    """Concurrency-safe runtime state stored in one SQLite database."""

@@ -37,17 +37,17 @@ Track the complete release in the [`0.4.0` milestone](https://github.com/binaydh
 
 ## 0.5.0 — protocol and service integrations
 
-- [ ] Add an MCP proxy that enforces the same runtime policies for tool discovery and execution.
-- [ ] Add an authenticated HTTP approval API and outbound decision webhooks.
-- [ ] Connect the runtime layer to supported agent frameworks without duplicating policy logic.
-- [ ] Publish framework-neutral conformance evidence for the runtime boundary.
+- [x] Add an MCP proxy that enforces the same runtime policies for tool discovery and execution.
+- [x] Add an authenticated HTTP approval API and outbound decision webhooks.
+- [x] Connect the runtime layer to supported agent frameworks without duplicating policy logic.
+- [x] Publish framework-neutral conformance evidence for the runtime boundary.
 
 ## 0.6.0 — team operations
 
-- [ ] Add a small self-hosted approval dashboard with live pending-action updates.
-- [ ] Add a PostgreSQL store with migrations and concurrency parity with SQLite.
+- [x] Add a small self-hosted approval dashboard with pending-action review.
+- [x] Add a PostgreSQL store with migrations and concurrency parity with SQLite.
 - [ ] Add signed Slack approval notifications and decisions.
-- [ ] Add an emergency pause switch and atomic per-tool or per-principal action limits.
+- [x] Add an emergency pause switch and atomic per-tool action and value limits.
 - [ ] Document secure single-node and team deployment patterns.
 
 ## 1.0.0 — stable production contract

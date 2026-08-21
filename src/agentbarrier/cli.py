@@ -10,6 +10,7 @@ import json
 import os
 import sys
 from collections.abc import Callable, Sequence
+from contextlib import AbstractContextManager
 from pathlib import Path
 from typing import Any, cast
 
@@ -29,7 +30,9 @@ from agentbarrier.models import ApprovalBarrierProfile, JsonValue
 from agentbarrier.models import Decision as RuntimeDecision
 from agentbarrier.reporters import render_console, write_json, write_junit, write_sarif
 from agentbarrier.runner import RunnerOptions, SuiteRunner
+from agentbarrier.runtime.factory import open_runtime_store
 from agentbarrier.runtime.models import RuntimeReconciliation, RuntimeStatus
+from agentbarrier.runtime.protocol import RuntimeStore
 from agentbarrier.runtime.serialization import (
     action_payload,
     control_receipt_payload,
@@ -228,12 +231,22 @@ def build_parser() -> argparse.ArgumentParser:
         "migrate", help="apply supported runtime schema migrations"
     )
     _add_runtime_db_option(database_migrate)
+    database_migrate.add_argument(
+        "--postgres-create-schema",
+        action="store_true",
+        help="create the PostgreSQL schema during this migration",
+    )
     database_migrate.set_defaults(handler=_run_database_migrate)
 
     database_backup = database_commands.add_parser(
         "backup", help="write a consistent runtime database backup"
     )
-    _add_runtime_db_option(database_backup)
+    database_backup.add_argument(
+        "--db",
+        required=True,
+        metavar="PATH",
+        help="runtime SQLite database; PostgreSQL deployments use pg_dump",
+    )
     database_backup.add_argument("--output", required=True, metavar="PATH")
     database_backup.set_defaults(handler=_run_database_backup)
 
@@ -363,7 +376,37 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _add_runtime_db_option(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--db", required=True, metavar="PATH", help="runtime SQLite database")
+    backend = parser.add_mutually_exclusive_group(required=True)
+    backend.add_argument("--db", metavar="PATH", help="runtime SQLite database")
+    backend.add_argument(
+        "--postgres-dsn-env",
+        metavar="NAME",
+        help="environment variable containing the PostgreSQL DSN",
+    )
+    parser.add_argument(
+        "--postgres-schema",
+        default="agentbarrier",
+        metavar="NAME",
+        help="dedicated PostgreSQL schema (default: agentbarrier)",
+    )
+
+
+def _open_cli_runtime_store(
+    arguments: argparse.Namespace,
+) -> AbstractContextManager[RuntimeStore]:
+    return open_runtime_store(
+        database_path=cast(str | None, arguments.db),
+        postgres_dsn_env=cast(str | None, arguments.postgres_dsn_env),
+        postgres_schema=cast(str, arguments.postgres_schema),
+        postgres_create_schema=bool(getattr(arguments, "postgres_create_schema", False)),
+        postgres_migrate=getattr(arguments, "database_command", None) == "migrate",
+    )
+
+
+def _require_existing_selected_store(arguments: argparse.Namespace) -> None:
+    database_path = cast(str | None, arguments.db)
+    if database_path is not None:
+        _require_existing_runtime_db(database_path)
 
 
 def _add_control_scope_options(parser: argparse.ArgumentParser) -> None:
@@ -501,7 +544,7 @@ def _run_compatibility(arguments: argparse.Namespace) -> int:
 
 
 def _run_approvals_list(arguments: argparse.Namespace) -> int:
-    with SQLiteRuntimeStore(cast(str, arguments.db)) as store:
+    with _open_cli_runtime_store(arguments) as store:
         status = RuntimeStatus(arguments.status) if arguments.status else None
         actions = store.list_actions(status=status)
     if arguments.json:
@@ -517,7 +560,7 @@ def _run_approvals_list(arguments: argparse.Namespace) -> int:
 
 
 def _run_approvals_show(arguments: argparse.Namespace) -> int:
-    with SQLiteRuntimeStore(cast(str, arguments.db)) as store:
+    with _open_cli_runtime_store(arguments) as store:
         action = store.get_action(cast(str, arguments.action_id))
     payload = action_payload(action)
     if arguments.json:
@@ -533,7 +576,7 @@ def _run_approvals_show(arguments: argparse.Namespace) -> int:
 
 def _run_approval_decision(arguments: argparse.Namespace) -> int:
     decision = cast(RuntimeDecision, arguments.decision)
-    with SQLiteRuntimeStore(cast(str, arguments.db)) as store:
+    with _open_cli_runtime_store(arguments) as store:
         action = store.decide(
             cast(str, arguments.action_id),
             decision,
@@ -553,7 +596,7 @@ def _run_runtime_reconciliation(arguments: argparse.Namespace) -> int:
     if outcome is RuntimeReconciliation.NOT_COMMITTED and raw_result is not None:
         raise ValueError("--result-json is valid only for a committed reconciliation")
     result = cast(JsonValue, json.loads(raw_result)) if raw_result is not None else None
-    with SQLiteRuntimeStore(cast(str, arguments.db)) as store:
+    with _open_cli_runtime_store(arguments) as store:
         action = store.reconcile(
             cast(str, arguments.action_id),
             outcome,
@@ -566,7 +609,7 @@ def _run_runtime_reconciliation(arguments: argparse.Namespace) -> int:
 
 
 def _run_runtime_audit(arguments: argparse.Namespace) -> int:
-    with SQLiteRuntimeStore(cast(str, arguments.db)) as store:
+    with _open_cli_runtime_store(arguments) as store:
         receipts = store.receipts(action_id=cast(str | None, arguments.action_id))
         chain_valid = store.verify_receipt_chain()
     if arguments.json:
@@ -592,9 +635,8 @@ def _run_runtime_audit(arguments: argparse.Namespace) -> int:
 
 
 def _run_controls_status(arguments: argparse.Namespace) -> int:
-    database_path = cast(str, arguments.db)
-    _require_existing_runtime_db(database_path)
-    with SQLiteRuntimeStore(database_path) as store:
+    _require_existing_selected_store(arguments)
+    with _open_cli_runtime_store(arguments) as store:
         pauses = store.list_pauses()
         limits = store.list_limits()
         usage = store.limit_usage()
@@ -632,7 +674,7 @@ def _run_controls_status(arguments: argparse.Namespace) -> int:
 
 
 def _run_controls_pause(arguments: argparse.Namespace) -> int:
-    with SQLiteRuntimeStore(cast(str, arguments.db)) as store:
+    with _open_cli_runtime_store(arguments) as store:
         pause = store.set_pause(
             namespace=cast(str | None, arguments.namespace),
             tool_name=cast(str | None, arguments.tool_name),
@@ -648,9 +690,8 @@ def _run_controls_pause(arguments: argparse.Namespace) -> int:
 def _run_controls_resume(arguments: argparse.Namespace) -> int:
     namespace = cast(str | None, arguments.namespace)
     tool_name = cast(str | None, arguments.tool_name)
-    database_path = cast(str, arguments.db)
-    _require_existing_runtime_db(database_path)
-    with SQLiteRuntimeStore(database_path) as store:
+    _require_existing_selected_store(arguments)
+    with _open_cli_runtime_store(arguments) as store:
         cleared = store.clear_pause(
             namespace=namespace,
             tool_name=tool_name,
@@ -667,7 +708,7 @@ def _run_controls_resume(arguments: argparse.Namespace) -> int:
 
 
 def _run_controls_limit_set(arguments: argparse.Namespace) -> int:
-    with SQLiteRuntimeStore(cast(str, arguments.db)) as store:
+    with _open_cli_runtime_store(arguments) as store:
         limit = store.configure_limit(
             cast(str, arguments.limit_id),
             namespace=cast(str | None, arguments.namespace),
@@ -684,9 +725,8 @@ def _run_controls_limit_set(arguments: argparse.Namespace) -> int:
 
 
 def _run_controls_limit_disable(arguments: argparse.Namespace) -> int:
-    database_path = cast(str, arguments.db)
-    _require_existing_runtime_db(database_path)
-    with SQLiteRuntimeStore(database_path) as store:
+    _require_existing_selected_store(arguments)
+    with _open_cli_runtime_store(arguments) as store:
         limit = store.disable_limit(
             cast(str, arguments.limit_id),
             updated_by=cast(str, arguments.updated_by),
@@ -697,9 +737,8 @@ def _run_controls_limit_disable(arguments: argparse.Namespace) -> int:
 
 
 def _run_database_status(arguments: argparse.Namespace) -> int:
-    database_path = cast(str, arguments.db)
-    _require_existing_runtime_db(database_path)
-    with SQLiteRuntimeStore(database_path) as store:
+    _require_existing_selected_store(arguments)
+    with _open_cli_runtime_store(arguments) as store:
         actions = store.list_actions()
         receipts = store.receipts()
         control_receipts = store.control_receipts()
@@ -731,7 +770,7 @@ def _run_database_status(arguments: argparse.Namespace) -> int:
 
 
 def _run_database_migrate(arguments: argparse.Namespace) -> int:
-    with SQLiteRuntimeStore(cast(str, arguments.db)) as store:
+    with _open_cli_runtime_store(arguments) as store:
         version = store.schema_version
     print(f"Runtime database is at schema version {version}")
     return 0
@@ -760,8 +799,10 @@ def _run_mcp_gateway(arguments: argparse.Namespace) -> int:
 
     config = MCPGatewayConfig(
         policy_path=Path(cast(str, arguments.policy)),
-        database_path=Path(cast(str, arguments.db)),
+        database_path=(Path(cast(str, arguments.db)) if arguments.db is not None else None),
         namespace=cast(str, arguments.namespace),
+        postgres_dsn_env=cast(str | None, arguments.postgres_dsn_env),
+        postgres_schema=cast(str, arguments.postgres_schema),
         upstream_url=cast(str | None, arguments.upstream_url),
         upstream_command=cast(str | None, arguments.upstream_command),
         upstream_args=tuple(cast(list[str], arguments.upstream_arg)),
@@ -791,8 +832,10 @@ def _run_approval_api(arguments: argparse.Namespace) -> int:
             "approval API dependencies are unavailable; install 'agentbarrier[service]'"
         ) from error
     run_approval_api(
-        database_path=cast(str, arguments.db),
+        database_path=cast(str | None, arguments.db),
         auth_path=cast(str, arguments.auth_config),
+        postgres_dsn_env=cast(str | None, arguments.postgres_dsn_env),
+        postgres_schema=cast(str, arguments.postgres_schema),
         host=cast(str, arguments.host),
         port=cast(int, arguments.port),
     )
@@ -807,8 +850,10 @@ def _run_approval_dashboard(arguments: argparse.Namespace) -> int:
             "dashboard dependencies are unavailable; install 'agentbarrier[service]'"
         ) from error
     run_approval_dashboard(
-        database_path=cast(str, arguments.db),
+        database_path=cast(str | None, arguments.db),
         auth_path=cast(str, arguments.auth_config),
+        postgres_dsn_env=cast(str | None, arguments.postgres_dsn_env),
+        postgres_schema=cast(str, arguments.postgres_schema),
         host=cast(str, arguments.host),
         port=cast(int, arguments.port),
         public_origin=cast(str | None, arguments.public_origin),
@@ -842,9 +887,11 @@ def _run_webhook_worker(arguments: argparse.Namespace) -> int:
             "webhook dependencies are unavailable; install 'agentbarrier[service]'"
         ) from error
     counts = run_webhook_worker(
-        database_path=cast(str, arguments.db),
+        database_path=cast(str | None, arguments.db),
         state_path=cast(str, arguments.state_db),
         config_path=cast(str, arguments.config),
+        postgres_dsn_env=cast(str | None, arguments.postgres_dsn_env),
+        postgres_schema=cast(str, arguments.postgres_schema),
         once=cast(bool, arguments.once),
         poll_interval_seconds=cast(float, arguments.poll_interval),
     )

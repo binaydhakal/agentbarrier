@@ -42,6 +42,10 @@ class RuntimeBarrierError(AgentBarrierError):
     """Base exception for runtime policy and execution failures."""
 
 
+class RuntimeStoreError(RuntimeBarrierError):
+    """Raised when durable runtime state cannot be connected, validated, or migrated."""
+
+
 class FrameworkControlSignalError(RuntimeBarrierError):
     """Raised when a claimed tool emits a framework signal that could trigger unsafe recovery."""
 

@@ -105,3 +105,8 @@ agentbarrier verify myapp.agentbarrier_adapter:create_adapter \
 Do not connect the conformance job to production tools. The adapter should replace the final
 effect boundary with the supplied `EffectProbe` while preserving the application's normal control
 flow.
+
+AgentBarrier's own package CI additionally runs the shared runtime-store contract against real
+SQLite and PostgreSQL backends. A clean virtual environment installs the built wheel and proves
+pending, approval, execution, replay, pause, limit, and receipt-chain behavior against PostgreSQL;
+this guards against source-tree-only dependency or packaging mistakes.

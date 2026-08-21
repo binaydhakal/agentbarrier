@@ -75,6 +75,10 @@ emergency pauses, configured execution-limit windows, current usage, and receipt
 Open an action to inspect its exact stored arguments and result before approving or rejecting it.
 The authenticated subject—not a form field—becomes `decided_by` in the action and receipt.
 
+For a shared deployment, replace `--db` with `--postgres-dsn-env NAME` and optionally
+`--postgres-schema NAME`. The dashboard validates an already-migrated schema and will not create or
+migrate it. Follow the [PostgreSQL guide](postgresql.md) before starting the service.
+
 ## Deploy behind HTTPS
 
 Terminate TLS at a trusted reverse proxy and keep the application listener on a private loopback or

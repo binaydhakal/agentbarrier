@@ -24,7 +24,7 @@ from starlette.types import ASGIApp
 from agentbarrier import __version__
 from agentbarrier.mcp.auth import MCPBearerAuthMiddleware
 from agentbarrier.mcp.gateway import MCPClientFactory, MCPGateway, argument_idempotency_key
-from agentbarrier.runtime import RuntimeBarrier, RuntimePolicy, SQLiteRuntimeStore
+from agentbarrier.runtime import RuntimeBarrier, RuntimePolicy, RuntimeStore, open_runtime_store
 from agentbarrier.service.auth import StaticBearerAuth, hash_bearer_token
 
 DEFAULT_MCP_REQUEST_BYTES = 1024 * 1024
@@ -37,8 +37,10 @@ class MCPGatewayConfig:
     """Validated configuration shared by stdio and HTTP gateway runners."""
 
     policy_path: Path
-    database_path: Path
+    database_path: Path | None
     namespace: str
+    postgres_dsn_env: str | None = None
+    postgres_schema: str = "agentbarrier"
     upstream_url: str | None = None
     upstream_command: str | None = None
     upstream_args: tuple[str, ...] = ()
@@ -49,6 +51,14 @@ class MCPGatewayConfig:
     def __post_init__(self) -> None:
         if not self.namespace.strip():
             raise ValueError("MCP gateway namespace must not be empty")
+        databases = int(self.database_path is not None) + int(self.postgres_dsn_env is not None)
+        if databases != 1:
+            raise ValueError("configure exactly one MCP runtime database backend")
+        if (
+            self.postgres_dsn_env is not None
+            and _ENVIRONMENT_NAME_PATTERN.fullmatch(self.postgres_dsn_env) is None
+        ):
+            raise ValueError("PostgreSQL DSN environment name is invalid")
         targets = int(self.upstream_url is not None) + int(self.upstream_command is not None)
         if targets != 1:
             raise ValueError("configure exactly one of upstream_url or upstream_command")
@@ -78,7 +88,11 @@ def run_stdio_gateway(config: MCPGatewayConfig) -> None:
 
 
 async def _serve_stdio_gateway(config: MCPGatewayConfig) -> None:
-    with SQLiteRuntimeStore(config.database_path) as store:
+    with open_runtime_store(
+        database_path=config.database_path,
+        postgres_dsn_env=config.postgres_dsn_env,
+        postgres_schema=config.postgres_schema,
+    ) as store:
         gateway = _build_gateway(config, store)
         async with stdio_server() as (read_stream, write_stream):
             await gateway.server.run(
@@ -102,7 +116,11 @@ def run_http_gateway(
     if not 1 <= port <= 65535:
         raise ValueError("HTTP gateway port must be between 1 and 65535")
     auth = StaticBearerAuth.from_file(auth_path) if auth_path is not None else None
-    with SQLiteRuntimeStore(config.database_path) as store:
+    with open_runtime_store(
+        database_path=config.database_path,
+        postgres_dsn_env=config.postgres_dsn_env,
+        postgres_schema=config.postgres_schema,
+    ) as store:
         gateway = _build_gateway(config, store)
         app = create_http_gateway_app(
             gateway,
@@ -144,7 +162,7 @@ def create_http_gateway_app(
     return app
 
 
-def _build_gateway(config: MCPGatewayConfig, store: SQLiteRuntimeStore) -> MCPGateway:
+def _build_gateway(config: MCPGatewayConfig, store: RuntimeStore) -> MCPGateway:
     policy = RuntimePolicy.from_file(config.policy_path)
     barrier = RuntimeBarrier(
         policy=policy,

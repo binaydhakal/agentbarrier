@@ -19,7 +19,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from agentbarrier import __version__
 from agentbarrier.errors import InvalidActionState, RuntimeActionError
 from agentbarrier.models import Decision
-from agentbarrier.runtime import RuntimeStatus, SQLiteRuntimeStore
+from agentbarrier.runtime import RuntimeStatus, RuntimeStore
 from agentbarrier.runtime.serialization import action_payload, receipt_payload
 from agentbarrier.service.auth import AuthenticationError, Principal, StaticBearerAuth
 
@@ -80,7 +80,7 @@ class SecurityHeadersMiddleware:
 class ApprovalAPI:
     """HTTP application exposing scoped, identity-bound approval operations."""
 
-    def __init__(self, *, store: SQLiteRuntimeStore, auth: StaticBearerAuth) -> None:
+    def __init__(self, *, store: RuntimeStore, auth: StaticBearerAuth) -> None:
         self.store = store
         self.auth = auth
         self.openapi = _openapi_document()
@@ -239,7 +239,7 @@ class ApprovalAPI:
             ) from error
 
 
-def create_approval_app(*, store: SQLiteRuntimeStore, auth: StaticBearerAuth) -> Starlette:
+def create_approval_app(*, store: RuntimeStore, auth: StaticBearerAuth) -> Starlette:
     """Create a Starlette approval API around one already-open runtime store."""
 
     return ApprovalAPI(store=store, auth=auth).app

@@ -46,6 +46,7 @@ all = [
     { name = "langgraph", marker = "python_full_version >= '3.11'" },
     { name = "mcp", version = "2.0.0", source = { registry = "https://pypi.org/simple" } },
     { name = "openai-agents" },
+    { name = "psycopg" },
     { name = "pydantic-ai-slim" },
     { name = "starlette" },
     { name = "uvicorn" },
@@ -70,6 +71,9 @@ mcp = [
 ]
 openai = [
     { name = "openai-agents" },
+]
+postgres = [
+    { name = "psycopg" },
 ]
 pydantic-ai = [
     { name = "pydantic-ai-slim" },
@@ -110,6 +114,8 @@ requires-dist = [
     { name = "onnxruntime", marker = "python_full_version < '3.11' and extra == 'crewai'", specifier = ">=1.22,<1.24" },
     { name = "openai-agents", marker = "extra == 'all'", specifier = ">=0.22,<1" },
     { name = "openai-agents", marker = "extra == 'openai'", specifier = ">=0.22,<1" },
+    { name = "psycopg", marker = "extra == 'all'", specifier = ">=3.3,<4" },
+    { name = "psycopg", marker = "extra == 'postgres'", specifier = ">=3.3,<4" },
     { name = "pydantic-ai-slim", marker = "extra == 'all'", specifier = ">=2.32,<3" },
     { name = "pydantic-ai-slim", marker = "extra == 'pydantic-ai'", specifier = ">=2.32,<3" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.3" },
@@ -122,7 +128,7 @@ requires-dist = [
     { name = "uvicorn", marker = "extra == 'mcp'", specifier = ">=0.34,<1" },
     { name = "uvicorn", marker = "extra == 'service'", specifier = ">=0.34,<1" },
 ]
-provides-extras = ["all", "autogen", "crewai", "google-adk", "langgraph", "mcp", "openai", "pydantic-ai", "service", "test"]
+provides-extras = ["all", "autogen", "crewai", "google-adk", "langgraph", "mcp", "openai", "postgres", "pydantic-ai", "service", "test"]
 
 [[package]]
 name = "aiofiles"
@@ -4308,6 +4314,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/d7/48cbf6b0c3c39761e47a99cb483405f0fde2be22cf00d71ef316ce52b458/protobuf-5.29.6-cp38-abi3-manylinux2014_aarch64.whl", hash = "sha256:a8866b2cff111f0f863c1b3b9e7572dc7eaea23a7fae27f6fc613304046483e6", size = 320284, upload-time = "2026-02-04T22:54:31.782Z" },
     { url = "https://files.pythonhosted.org/packages/e3/dd/cadd6ec43069247d91f6345fa7a0d2858bef6af366dbd7ba8f05d2c77d3b/protobuf-5.29.6-cp38-abi3-manylinux2014_x86_64.whl", hash = "sha256:e3387f44798ac1106af0233c04fb8abf543772ff241169946f698b3a9a3d3ab9", size = 320478, upload-time = "2026-02-04T22:54:32.909Z" },
     { url = "https://files.pythonhosted.org/packages/5a/cb/e3065b447186cb70aa65acc70c86baf482d82bf75625bf5a2c4f6919c6a3/protobuf-5.29.6-py3-none-any.whl", hash = "sha256:6b9edb641441b2da9fa8f428760fc136a49cf97a52076010cf22a2ff73438a86", size = 173126, upload-time = "2026-02-04T22:54:39.462Z" },
+]
+
+[[package]]
+name = "psycopg"
+version = "3.3.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions", marker = "python_full_version < '3.13' or (extra == 'extra-12-agentbarrier-all' and extra == 'extra-12-agentbarrier-crewai') or (extra == 'extra-12-agentbarrier-crewai' and extra == 'extra-12-agentbarrier-mcp') or (extra == 'extra-12-agentbarrier-crewai' and extra == 'extra-12-agentbarrier-openai')" },
+    { name = "tzdata", marker = "sys_platform == 'win32' or (extra == 'extra-12-agentbarrier-all' and extra == 'extra-12-agentbarrier-crewai') or (extra == 'extra-12-agentbarrier-crewai' and extra == 'extra-12-agentbarrier-mcp') or (extra == 'extra-12-agentbarrier-crewai' and extra == 'extra-12-agentbarrier-openai')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/db/2f/cb91e5502ec9de1de6f1b76cfbf69531932725361168bb06963620c77e2e/psycopg-3.3.4.tar.gz", hash = "sha256:e21207764952cff81b6b8bdacad9a3939f2793367fdac2987b3aac36a651b5bc", size = 165799, upload-time = "2026-05-01T23:31:55.179Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5c/e0/7b3dee031daae7743609ce3c746565d4a3ed7c2c186479eb48e34e838c64/psycopg-3.3.4-py3-none-any.whl", hash = "sha256:b6bbc25ccf05c8fad3b061d9db2ef0909a555171b84b07f29458a447253d679a", size = 213001, upload-time = "2026-05-01T23:20:50.816Z" },
 ]
 
 [[package]]

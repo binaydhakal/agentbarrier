@@ -8,7 +8,7 @@ from pathlib import Path
 import anyio
 import uvicorn
 
-from agentbarrier.runtime import SQLiteRuntimeStore
+from agentbarrier.runtime import open_runtime_store
 from agentbarrier.service.api import create_approval_app
 from agentbarrier.service.auth import StaticBearerAuth
 from agentbarrier.service.dashboard import DashboardSessionStore, create_dashboard_app
@@ -22,8 +22,10 @@ from agentbarrier.service.webhooks import (
 
 def run_approval_api(
     *,
-    database_path: str | Path,
+    database_path: str | Path | None,
     auth_path: str | Path,
+    postgres_dsn_env: str | None = None,
+    postgres_schema: str = "agentbarrier",
     host: str = "127.0.0.1",
     port: int = 8787,
 ) -> None:
@@ -34,15 +36,21 @@ def run_approval_api(
     if not 1 <= port <= 65535:
         raise ValueError("approval API port must be between 1 and 65535")
     auth = StaticBearerAuth.from_file(auth_path)
-    with SQLiteRuntimeStore(database_path) as store:
+    with open_runtime_store(
+        database_path=database_path,
+        postgres_dsn_env=postgres_dsn_env,
+        postgres_schema=postgres_schema,
+    ) as store:
         app = create_approval_app(store=store, auth=auth)
         uvicorn.run(app, host=host, port=port, log_level="info")
 
 
 def run_approval_dashboard(
     *,
-    database_path: str | Path,
+    database_path: str | Path | None,
     auth_path: str | Path,
+    postgres_dsn_env: str | None = None,
+    postgres_schema: str = "agentbarrier",
     host: str = "127.0.0.1",
     port: int = 8788,
     public_origin: str | None = None,
@@ -59,10 +67,15 @@ def run_approval_dashboard(
         raise ValueError(
             "non-loopback dashboard listeners require --cookie-secure and --public-origin"
         )
-    _require_existing_file(database_path, label="runtime database")
+    if database_path is not None:
+        _require_existing_file(database_path, label="runtime database")
     auth = StaticBearerAuth.from_file(auth_path)
     sessions = DashboardSessionStore(ttl_seconds=session_ttl_seconds)
-    with SQLiteRuntimeStore(database_path) as store:
+    with open_runtime_store(
+        database_path=database_path,
+        postgres_dsn_env=postgres_dsn_env,
+        postgres_schema=postgres_schema,
+    ) as store:
         app = create_dashboard_app(
             store=store,
             auth=auth,
@@ -75,18 +88,25 @@ def run_approval_dashboard(
 
 def run_webhook_worker(
     *,
-    database_path: str | Path,
+    database_path: str | Path | None,
     state_path: str | Path,
     config_path: str | Path,
+    postgres_dsn_env: str | None = None,
+    postgres_schema: str = "agentbarrier",
     once: bool = False,
     poll_interval_seconds: float = 1,
 ) -> dict[str, int] | None:
     """Run one durable webhook pass or poll continuously until shutdown."""
 
-    _require_existing_file(database_path, label="runtime database")
+    if database_path is not None:
+        _require_existing_file(database_path, label="runtime database")
     config = WebhookConfig.from_file(config_path)
     with (
-        SQLiteRuntimeStore(database_path) as runtime_store,
+        open_runtime_store(
+            database_path=database_path,
+            postgres_dsn_env=postgres_dsn_env,
+            postgres_schema=postgres_schema,
+        ) as runtime_store,
         WebhookDeliveryStore(state_path) as delivery_store,
     ):
         worker = WebhookWorker(

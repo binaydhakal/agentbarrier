@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -45,6 +46,34 @@ def test_dashboard_wheel_audit_binds_approval_to_authenticated_reviewer(tmp_path
         "events": ["approval_requested", "approved"],
         "status": "passed",
     }
+
+
+def test_postgres_wheel_audit_preserves_runtime_and_control_invariants(tmp_path: Path) -> None:
+    if "AGENTBARRIER_TEST_POSTGRES_DSN" not in os.environ:
+        pytest.skip("AGENTBARRIER_TEST_POSTGRES_DSN is not configured")
+    pytest.importorskip("psycopg", reason="PostgreSQL optional dependency is not installed")
+    from tools.audit_postgres_wheel import run_audit as run_postgres_audit
+
+    result = run_postgres_audit(
+        dsn_environment="AGENTBARRIER_TEST_POSTGRES_DSN",
+        directory=tmp_path,
+    )
+    assert result["status"] == "passed"
+    assert result["effect_count"] == 1
+    assert result["usage"] == {"actions": 1, "value": 0}
+    assert result["control_events"] == [
+        "limit_configured",
+        "emergency_pause_set",
+        "emergency_pause_cleared",
+    ]
+    assert result["events"] == [
+        "approval_requested",
+        "approved",
+        "emergency_pause_blocked",
+        "execution_started",
+        "execution_succeeded",
+        "result_replayed",
+    ]
 
 
 def test_langgraph_wheel_audit_executes_effect_once(tmp_path: Path) -> None:

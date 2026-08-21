@@ -161,3 +161,7 @@ fields.
 The static-token service is a secure single-node step, not the final multi-user identity system.
 Organizations, role management, separation-of-duty policy, and external identity-provider support
 remain 1.0 deliverables.
+
+The API runner also accepts `--postgres-dsn-env NAME` and `--postgres-schema NAME` instead of
+`--db`, allowing multiple API and execution processes to share one migrated runtime store. Follow
+the separate-role and migration guidance in the [PostgreSQL guide](postgresql.md).

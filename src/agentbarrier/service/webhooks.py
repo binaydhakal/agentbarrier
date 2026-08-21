@@ -23,7 +23,7 @@ import anyio
 import httpx
 
 from agentbarrier import __version__
-from agentbarrier.runtime import RuntimeAction, RuntimeEvent, RuntimeReceipt, SQLiteRuntimeStore
+from agentbarrier.runtime import RuntimeAction, RuntimeEvent, RuntimeReceipt, RuntimeStore
 from agentbarrier.runtime.models import canonical_json
 
 _WEBHOOK_SCHEMA_VERSION = "1"
@@ -668,7 +668,7 @@ class WebhookWorker:
     def __init__(
         self,
         *,
-        runtime_store: SQLiteRuntimeStore,
+        runtime_store: RuntimeStore,
         delivery_store: WebhookDeliveryStore,
         config: WebhookConfig,
         sender: WebhookSender | None = None,

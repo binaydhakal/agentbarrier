@@ -110,6 +110,51 @@ jobs:
           path: build/crewai/
           if-no-files-found: error
 
+  postgres:
+    name: PostgreSQL parity (Python 3.11)
+    runs-on: ubuntu-latest
+    env:
+      AGENTBARRIER_TEST_POSTGRES_DSN: postgresql://postgres:postgres@127.0.0.1:5432/agentbarrier
+    services:
+      postgres:
+        image: postgres:18.4-alpine
+        env:
+          POSTGRES_DB: agentbarrier
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
+        with:
+          python-version: "3.11"
+          enable-cache: true
+      - run: uv sync --locked --extra test --extra service --extra postgres
+      - run: >-
+          uv pip install --python .venv/bin/python
+          "psycopg[binary]>=3.3,<4"
+      - name: Run shared store contract and PostgreSQL integration tests
+        run: >-
+          uv run pytest
+          tests/test_runtime_store_contract.py
+          tests/test_postgres_runtime_store.py
+          tests/test_runtime_wheel_audit.py
+      - run: uv build
+      - name: Audit installed wheel against PostgreSQL
+        run: |
+          uv venv --python 3.11 build/postgres-wheel-audit
+          uv pip install --python build/postgres-wheel-audit/bin/python \
+            dist/*.whl \
+            "psycopg[binary]>=3.3,<4"
+          build/postgres-wheel-audit/bin/python tools/audit_postgres_wheel.py
+
   package:
     name: Build package
     runs-on: ubuntu-latest

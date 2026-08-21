@@ -31,9 +31,9 @@ trusted. The adapter, framework, application middleware, scheduler, persistence 
 and cancellation propagation are under test.
 
 For runtime enforcement, the host operating system, Python process, policy file, application wiring,
-SQLite library, database path, reviewer identity supplied to the local CLI, and downstream
-idempotency lookup are trusted. The model and model-visible conversation are not trusted to approve,
-identify, persist, or reconcile an action.
+SQLite or PostgreSQL client library, database location and credentials, reviewer identity supplied
+to the local CLI, and downstream idempotency lookup are trusted. The model and model-visible
+conversation are not trusted to approve, identify, persist, or reconcile an action.
 
 For the MCP gateway, the official MCP SDK, gateway configuration, upstream target, and configured
 idempotency resolver are also trusted. The downstream MCP client, its JSON-RPC request identifier,
@@ -74,6 +74,13 @@ command, URL, API token, or network route remains available to the agent.
 - Canonical JSON and request digests prevent an approval from being reused with changed bound data.
 - SQLite immediate transactions serialize action creation, reviewer decisions, execution claims,
   reconciliation, and receipt insertion across processes.
+- PostgreSQL uses a transaction-level advisory lock derived from its dedicated schema to preserve
+  the same global invariants across processes. This serializes state-changing transactions within
+  one schema and can become a throughput bottleneck; monitor lock waits and transaction latency.
+- PostgreSQL schema creation and migrations are explicit. Live services validate the current schema
+  and should use a distinct runtime identity without schema ownership or migration privileges. A
+  compromised database identity can still bypass controls or recompute receipt chains within the
+  rows it can modify.
 - Emergency pauses and every matching execution limit are checked inside the execution-claim
   transaction. They stop work that has not started; they cannot revoke an effect that already
   crossed the boundary. Operators must isolate database write access because anyone who can alter
@@ -182,7 +189,7 @@ AgentBarrier does not:
 - safely resume interactive MCP `InputRequiredResult` rounds after an execution claim;
 - make an external webhook receiver trustworthy, available, or exactly once;
 - invent a reliable business idempotency key from a JSON-RPC request ID;
-- secure, sign, encrypt, replicate, or retain the SQLite database and its backups;
+- secure, sign, encrypt, replicate, or retain the runtime database and its backups;
 - authenticate CLI reviewer names or provide multi-user authorization in 0.4;
 - guarantee exactly-once behavior in an external system that ignores the business idempotency key;
   or

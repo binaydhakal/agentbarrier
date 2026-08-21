@@ -61,7 +61,7 @@ Ordered comparisons require two numbers or two strings; they never coerce types.
 RuntimeBarrier(
     *,
     policy: RuntimePolicy,
-    store: SQLiteRuntimeStore,
+    store: RuntimeStore,
     namespace: str = "default",
 )
 ```
@@ -101,7 +101,13 @@ approval, exact-binding, and atomic-claim checks used by `protect`. A completed 
 from durable storage without invoking the operation again. An exception or cancellation after the
 claim produces an `unknown` action and is never retried automatically.
 
-## SQLite runtime store
+## Runtime stores
+
+`RuntimeStore` is the backend-neutral protocol consumed by `RuntimeBarrier`, the MCP gateway, and
+the approval services. `SQLiteRuntimeStore` and `PostgresRuntimeStore` preserve the same public
+lifecycle operations and atomic invariants.
+
+### SQLiteRuntimeStore
 
 ### `SQLiteRuntimeStore`
 
@@ -140,6 +146,35 @@ code can use these methods:
 Callers must preserve their exact request digest and must never call the consequential effect until
 `claim` returns `ClaimOutcome.EXECUTE`.
 
+### `PostgresRuntimeStore`
+
+```python
+PostgresRuntimeStore(
+    dsn: str,
+    *,
+    schema: str = "agentbarrier",
+    create_schema: bool = False,
+    migrate: bool = False,
+    execution_lease_seconds: float = 300,
+    lock_timeout_seconds: float = 30,
+)
+```
+
+The PostgreSQL extra is loaded only when this backend is constructed. Normal construction validates
+an already-migrated dedicated schema. Migration code must explicitly select `migrate=True`; first
+deployment may also select `create_schema=True`. `create_schema=True` without migration is rejected.
+
+State-changing operations take a schema-specific transaction advisory lock to preserve execution,
+limit, and receipt-chain invariants across processes. `backup()` is intentionally unavailable; use
+`pg_dump` or managed snapshots. See the [PostgreSQL guide](postgresql.md) for deployment roles,
+secret-safe CLI configuration, migrations, and recovery.
+
+### `open_runtime_store`
+
+Operational integrations use `open_runtime_store(...)` to select exactly one SQLite path or a
+PostgreSQL DSN environment-variable name. Supplying a DSN directly through the CLI is intentionally
+unsupported so it does not leak through process listings or shell history.
+
 ## Lifecycle
 
 | Status | Meaning | Executable? |
@@ -173,6 +208,8 @@ All runtime exceptions derive from `RuntimeBarrierError` in `agentbarrier.errors
 - `FrameworkControlSignalError` means a claimed framework tool emitted a retry, failure, approval,
   or deferral signal that could otherwise trigger unsafe model-visible recovery. The durable action
   remains `unknown` and requires reconciliation.
+- `RuntimeStoreError` means the durable backend could not connect, validate its schema, or apply a
+  requested migration. No consequential function is called after this failure.
 - `InvalidActionState` means the requested lifecycle transition is not legal.
 
 Treat `ActionOutcomeUnknown` as an operations event. Do not convert it into an automatic retry.

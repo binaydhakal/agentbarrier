@@ -154,8 +154,8 @@ status`.
 
 ## Manage the runtime database
 
-Opening a database automatically applies supported forward migrations in one transaction. For an
-explicit deployment step, status check, and consistent backup, use:
+Opening a SQLite database automatically applies supported forward migrations in one transaction.
+For an explicit deployment step, status check, and consistent backup, use:
 
 ```bash
 agentbarrier database status --db agentbarrier.db
@@ -169,6 +169,10 @@ user. Store the backup outside the application host using encryption and access 
 for the tool arguments and decisions it contains. Restore by stopping writers, preserving the
 current database, copying the verified backup into place, and running `database status` before
 restarting the application.
+
+Team deployments can use the PostgreSQL backend with the same action and control invariants.
+PostgreSQL schema creation and migration are explicit, while normal service startup validates the
+existing schema without changing it. See the [PostgreSQL operations guide](postgresql.md).
 
 ## Unknown outcomes fail closed
 

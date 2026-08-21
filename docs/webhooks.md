@@ -202,3 +202,7 @@ events cannot be requeued with this command.
 
 See the [approval API guide](approval-api.md) for identity-bound decisions and the
 [threat model](threat-model.md) for the complete trust boundary.
+
+The runtime source may be PostgreSQL by replacing `--db` with `--postgres-dsn-env NAME` and
+optionally `--postgres-schema NAME`. Webhook delivery state remains a separate SQLite outbox in
+this release. Provision the shared runtime schema using the [PostgreSQL guide](postgresql.md).

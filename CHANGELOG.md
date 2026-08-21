@@ -19,6 +19,9 @@ All notable changes to this project will be documented in this file. The format 
   scopes, exact escaped action inspection, identity-bound decisions, CSRF and same-origin
   enforcement, strict form parsing, browser isolation headers, responsive accessible layouts, safe
   loopback defaults, secure-cookie deployment controls, and a clean-wheel approval audit.
+- PostgreSQL runtime storage with an explicit migration boundary, secret-safe environment-based
+  configuration, dedicated schemas, cross-process advisory locking, SQLite behavioral parity,
+  service and CLI integration, real database CI, and an installed-wheel lifecycle audit.
 
 - Transport-neutral sync and async runtime execution APIs for dynamic tool dispatchers, MCP
   gateways, and framework integrations that cannot use a Python decorator.
