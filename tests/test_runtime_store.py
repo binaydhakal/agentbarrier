@@ -56,13 +56,14 @@ def _claim_limited_in_subprocess(
     path: Path,
     action_id: str,
     request_digest: str,
+    now_ns: int,
     ready: object,
     gate: object,
     results: object,
 ) -> None:
     ready.put(True)  # type: ignore[attr-defined]
     gate.wait(10)  # type: ignore[attr-defined]
-    with SQLiteRuntimeStore(path) as store:
+    with SQLiteRuntimeStore(path, clock_ns=lambda: now_ns) as store:
         try:
             outcome = store.claim(action_id, request_digest=request_digest).outcome.value
         except ActionLimitExceeded:
@@ -711,13 +712,14 @@ def test_limit_is_atomic_across_concurrent_processes(tmp_path: Path) -> None:
         ]
 
     context = multiprocessing.get_context("spawn")
+    now_ns = time.time_ns()
     ready = context.Queue()
     gate = context.Event()
     results = context.Queue()
     processes = [
         context.Process(
             target=_claim_limited_in_subprocess,
-            args=(path, action.action_id, request.request_digest, ready, gate, results),
+            args=(path, action.action_id, request.request_digest, now_ns, ready, gate, results),
         )
         for action, request in zip(actions, requests, strict=True)
     ]

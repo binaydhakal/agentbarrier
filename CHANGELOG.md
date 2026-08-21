@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-21
+
 ### Added
 
 - Interactive `agentbarrier approvals review` selection with exact action details and
@@ -165,7 +167,8 @@ not separately published.
 - Console, JSON, JUnit, and SARIF reports.
 - CLI, pytest fixture, Python 3.10–3.13 support, and strict type checking.
 
-[Unreleased]: https://github.com/binaydhakal/agentbarrier/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/binaydhakal/agentbarrier/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/binaydhakal/agentbarrier/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/binaydhakal/agentbarrier/compare/v0.3.0...v1.0.0
 [0.3.0]: https://github.com/binaydhakal/agentbarrier/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/binaydhakal/agentbarrier/compare/v0.2.0...v0.2.1
