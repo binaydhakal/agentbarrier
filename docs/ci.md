@@ -119,6 +119,7 @@ credential is used.
 
 For a final release, `tools/check_release_candidate.py` binds the `vX.Y.Z` tag to the literal source
 version, the wheel and source-distribution filenames, both embedded metadata versions, release
-notes, and the changelog. It records SHA-256 hashes for both artifacts. The PyPI workflow checks the
-same tag source and refuses to upload a conflicting artifact set or a version that is already
-published with different hashes.
+notes, and the changelog. It records SHA-256 hashes for both artifacts. The maintainer uploads those
+artifacts with the local PyPI CLI after explicit approval. Publishing the GitHub release then runs a
+credential-free workflow that rebuilds the same tag and fails unless PyPI contains exactly the same
+filenames and SHA-256 hashes. See the [maintainer release procedure](releasing.md).

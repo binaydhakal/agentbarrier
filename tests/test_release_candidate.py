@@ -97,7 +97,8 @@ def test_publish_workflow_builds_and_checks_the_exact_release_tag() -> None:
     assert workflow.count("ref: ${{ github.event.release.tag_name }}") == 2
     assert '--release-tag "$RELEASE_TAG"' in workflow
     assert "contents: read" in workflow
-    assert "id-token: write" in workflow
     assert "--require-published" in workflow
+    assert "id-token: write" not in workflow
+    assert "gh-action-pypi-publish" not in workflow
     assert "password:" not in workflow
     assert "ref: main" not in workflow

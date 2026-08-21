@@ -78,6 +78,8 @@ logs make live action outcomes observable without exporting arguments or results
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/deployment.md">Deployment</a>
   ·
+  <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/releasing.md">Releasing</a>
+  ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/dashboard.md">Dashboard</a>
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/postgresql.md">PostgreSQL</a>

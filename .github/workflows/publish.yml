@@ -1,4 +1,4 @@
-name: Publish to PyPI
+name: Verify PyPI release
 
 on:
   release:
@@ -38,8 +38,8 @@ jobs:
           path: dist/
           if-no-files-found: error
 
-  publish:
-    name: Publish distributions
+  verify:
+    name: Verify published distributions
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -47,7 +47,6 @@ jobs:
       url: https://pypi.org/project/agentbarrier/
     permissions:
       contents: read
-      id-token: write # PyPI trusted publishing; no long-lived token is stored.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -57,18 +56,6 @@ jobs:
         with:
           name: distributions
           path: dist/
-      - name: Check whether this release is already on PyPI
-        id: release-state
-        env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-        run: >-
-          python tools/check_pypi_release.py
-          --project agentbarrier
-          --version "$RELEASE_TAG"
-          --dist-dir dist
-          --github-output "$GITHUB_OUTPUT"
-      - if: steps.release-state.outputs.published != 'true'
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
       - name: Verify published artifact hashes
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
