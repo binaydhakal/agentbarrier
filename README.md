@@ -24,27 +24,27 @@ It sits immediately before a consequential action, decides whether to allow, den
 exact call for review, prevents duplicate execution, and records what happened outside the model's
 context.
 
-Use it around Python tools today or run the development MCP gateway in front of an existing tool
-server. The same project also includes a deterministic test suite for approval, rejection,
+Use it around Python tools or run the MCP gateway in front of an existing tool server. The same
+project also includes a deterministic test suite for approval, rejection,
 cancellation, timeout, replay, delegation, ambiguous outcomes, audit receipts, and parallel
 execution controls. It does not ask a model to judge another model and does not require a model API
 key.
 
-Runtime enforcement is available in 0.4.0. It applies deterministic allow, deny, and approval rules
+Runtime enforcement applies deterministic allow, deny, and approval rules
 directly around synchronous and asynchronous Python tool functions, persists exact approval state
 in SQLite, prevents duplicate execution, and emits integrity-linked audit receipts. See the
 [runtime guide](https://github.com/binaydhakal/agentbarrier/blob/main/docs/runtime.md).
 The [runtime API reference](https://github.com/binaydhakal/agentbarrier/blob/main/docs/runtime-api.md)
 documents the public classes, lifecycle, and failure contract.
-The [stability and migration policy](docs/stability-policy.md) defines the public surface and the
-compatibility promise that begins with 1.0.0.
+The [stability and migration policy](docs/stability-policy.md) defines the stable 1.x public surface
+and compatibility promise.
 The [production deployment and recovery guide](docs/deployment.md) covers the container baseline,
 roles, readiness, backup/restore drills, upgrades, rollback, and incident response.
-The main branch adds a deployable
+The package includes a deployable
 [MCP policy gateway](https://github.com/binaydhakal/agentbarrier/blob/main/docs/mcp-gateway.md)
 using the current MCP 2026-07-28 protocol through its official Python SDK, an authenticated
 approval API, and [durable signed webhooks](docs/webhooks.md) for approval and operations systems.
-Production-control work is also available on the main branch: durable emergency pauses
+Production controls include durable emergency pauses
 and atomic fixed-window action or integer-value limits enforced by the Python and MCP execution
 boundary, plus a server-rendered approval dashboard with scoped reviewer sessions and CSRF
 protection. A PostgreSQL backend lets multiple service processes share the same transaction-safe
@@ -52,15 +52,16 @@ approval, replay, control, and audit state; see the [PostgreSQL guide](docs/post
 Signed Slack approvals can deliver exact pending actions to a private channel, authorize only
 configured member IDs, reject forged or replayed interactions, and record the Slack identity in the
 runtime receipt; see the [Slack guide](docs/slack.md).
-Organization-scoped roles and requester/reviewer separation are also available on the main branch.
-They isolate API and dashboard views and enforce every decision rule again inside the database
+Organization-scoped roles and requester/reviewer separation isolate shared deployments. API and
+dashboard views are tenant-filtered, and every decision rule is enforced again inside the database
 transaction; see the [multi-user authorization guide](docs/multi-user-authorization.md).
 Optional privacy-safe OpenTelemetry spans and low-cardinality metrics plus structured lifecycle
 logs make live action outcomes observable without exporting arguments or results; see the
 [observability guide](docs/observability.md).
 
-> **Status:** early development. The public adapter contract is usable, but compatibility should
-> be pinned until the first stable release.
+> **Status:** AgentBarrier 1.x has a stable public API and is intended for self-hosted production
+> use. Pin a compatible minor version, keep consequential credentials behind the mediated boundary,
+> and follow the deployment and recovery guide before connecting live tools.
 
 <p align="center">
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/adapters.md">Adapter guide</a>
@@ -156,10 +157,10 @@ cents, tokens, rows, or messages, avoiding ambiguous floating-point money calcul
 
 ## Run as an MCP safety gateway
 
-Until 0.5.0 is released, install the optional gateway dependencies from the main branch:
+Install the optional gateway dependencies from PyPI:
 
 ```bash
-python -m pip install 'agentbarrier[mcp] @ git+https://github.com/binaydhakal/agentbarrier.git'
+python -m pip install 'agentbarrier[mcp]'
 ```
 
 Place AgentBarrier between an MCP client and an existing stdio server:
@@ -190,7 +191,7 @@ limiting still belong at trusted ingress. Each call must supply stable business 
 the configured argument path or the `agentbarrier/idempotencyKey` MCP metadata field. See the
 [MCP gateway guide](docs/mcp-gateway.md) for setup, approval flow, and the security boundary.
 
-The same runtime database can be reviewed from the development authenticated HTTP service. It uses
+The same runtime database can be reviewed from the authenticated HTTP service. It uses
 scoped bearer identities, takes the reviewer name from authentication rather than request data, and
 serves an OpenAPI 3.1 contract. See the [approval API guide](docs/approval-api.md).
 

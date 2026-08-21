@@ -2,7 +2,8 @@
 
 ## Supported versions
 
-Until the first stable release, only the latest published `0.x` release receives security fixes.
+Security fixes are provided for the latest published `1.x` minor release. Older minors may require
+an upgrade to receive a fix. Pre-1.0 releases are unsupported.
 
 ## Reporting a vulnerability
 

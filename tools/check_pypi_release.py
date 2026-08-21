@@ -83,12 +83,15 @@ def main(arguments: list[str] | None = None) -> int:
     parser.add_argument("--version", required=True)
     parser.add_argument("--dist-dir", type=Path, required=True)
     parser.add_argument("--github-output", type=Path, required=True)
+    parser.add_argument("--require-published", action="store_true")
     options = parser.parse_args(arguments)
 
     version = options.version.removeprefix("v")
     local = distribution_hashes(options.dist_dir)
     metadata = fetch_release(options.project, version)
     if metadata is None:
+        if options.require_published:
+            raise ValueError(f"{options.project} {version} is not published on PyPI")
         record_result(options.github_output, published=False)
         print(f"{options.project} {version} is not published; upload will proceed")
         return 0

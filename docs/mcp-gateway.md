@@ -1,7 +1,7 @@
 # MCP policy gateway
 
-> The MCP gateway is under development for AgentBarrier 0.5.0. Pin an exact pre-1.0 version and
-> keep the upstream server unreachable from untrusted clients while this contract evolves.
+> The MCP gateway is part of AgentBarrier's stable 1.x package. Keep the upstream server and its
+> credentials unreachable except through the gateway, and pin a compatible AgentBarrier minor.
 
 The gateway places AgentBarrier between an MCP client and an existing MCP server. It forwards tool
 discovery, but every tool call crosses the same policy, approval, idempotency, and audit boundary as
@@ -23,10 +23,8 @@ or stdio command so the gateway becomes the only route to the upstream credentia
 ## Install
 
 ```bash
-python -m pip install 'agentbarrier[mcp] @ git+https://github.com/binaydhakal/agentbarrier.git'
+python -m pip install 'agentbarrier[mcp]'
 ```
-
-After the 0.5.0 release, use `python -m pip install 'agentbarrier[mcp]'` from PyPI.
 
 The integration uses the official MCP Python SDK 2.x. That SDK supports the stateless MCP
 2026-07-28 revision and earlier handshake-era clients from the same server implementation.

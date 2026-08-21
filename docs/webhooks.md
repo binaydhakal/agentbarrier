@@ -1,7 +1,7 @@
 # Signed runtime webhooks
 
-> Signed webhooks are under development for AgentBarrier 0.5.0. Pin an exact pre-1.0 version and
-> test the receiver and retry policy before using them for production decisions or alerts.
+> Signed webhooks are part of AgentBarrier's stable 1.x package. Test each receiver, redaction
+> policy, and retry configuration before using it for production decisions or alerts.
 
 The webhook worker turns AgentBarrier's integrity-linked runtime receipts into durable outbound
 events. It can notify an approval service when an action needs review, update an operations system
@@ -21,13 +21,9 @@ redacted event in its own SQLite outbox and then delivers it with a byte-exact H
 
 ## Install
 
-Until 0.5.0 is released, install the service dependencies from the main branch:
-
 ```bash
-python -m pip install 'agentbarrier[service] @ git+https://github.com/binaydhakal/agentbarrier.git'
+python -m pip install 'agentbarrier[service]'
 ```
-
-After release, use `python -m pip install 'agentbarrier[service]'` from PyPI.
 
 ## Configure endpoints
 

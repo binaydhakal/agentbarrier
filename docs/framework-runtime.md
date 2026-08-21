@@ -4,15 +4,14 @@ Framework runtime integrations put AgentBarrier immediately around a framework t
 Python callable. They are different from the compatibility adapters in `agentbarrier.adapters`,
 which exercise deterministic sentinel tools to test framework lifecycle guarantees.
 
-The development integrations support OpenAI Agents Python, LangGraph, PydanticAI, and Google Agent
-Development Kit. Other evaluated frameworks remain 0.5.0 release work where their real callable
-boundary can be protected without weakening the runtime contract.
+The stable integrations support OpenAI Agents Python, LangGraph, PydanticAI, and Google Agent
+Development Kit where their real callable boundary can be protected without weakening the runtime
+contract.
 
 ## OpenAI Agents Python
 
-> This integration is under development for AgentBarrier 0.5.0 and currently targets
-> `openai-agents>=0.22,<1`. Pin an exact pre-1.0 version and run application-specific tests before
-> connecting consequential tools.
+> This integration targets `openai-agents>=0.22,<1`. Pin compatible AgentBarrier and framework
+> versions and run application-specific tests before connecting consequential tools.
 
 The official OpenAI Agents documentation defines Python tools with `function_tool`. AgentBarrier's
 `runtime_function_tool` returns that same SDK `FunctionTool`, while placing deterministic policy,
@@ -130,9 +129,8 @@ objects and contexts without making a model API request.
 
 ## LangGraph
 
-> This integration is under development for AgentBarrier 0.5.0 and currently targets
-> `langgraph>=1.2,<2` on Python 3.11+. Pin an exact pre-2.0 version and run application-specific
-> tests before connecting consequential tools.
+> This integration targets `langgraph>=1.2,<2` on Python 3.11+. Pin compatible AgentBarrier and
+> framework versions and run application-specific tests before connecting consequential tools.
 
 LangGraph's `ToolNode` executes model-requested tools and injects runtime state that is hidden from
 the model-facing schema. AgentBarrier's `runtime_structured_tool` returns a normal LangChain Core
@@ -239,9 +237,9 @@ credentials remain inaccessible to model-controlled code.
 
 ## PydanticAI
 
-> This integration is under development for AgentBarrier 0.5.0 and currently targets
-> `pydantic-ai-slim>=2.32,<3` on Python 3.10–3.13. Pin an exact pre-3.0 version and run
-> application-specific tests before connecting consequential tools.
+> This integration targets `pydantic-ai-slim>=2.32,<3` on Python 3.10–3.13. Pin compatible
+> AgentBarrier and framework versions and run application-specific tests before connecting
+> consequential tools.
 
 PydanticAI's `Tool` class derives model-visible parameters from a Python function and hides its
 injected `RunContext`. AgentBarrier's `runtime_tool` returns that normal `Tool`, while policy,
@@ -347,9 +345,8 @@ the original callable and downstream credentials outside every model-controlled 
 
 ## Google Agent Development Kit
 
-> This integration is under development for AgentBarrier 0.5.0 and currently targets
-> `google-adk>=2.7,<3` on Python 3.10–3.13. Pin an exact pre-3.0 version and run application-specific
-> tests before connecting consequential tools.
+> This integration targets `google-adk>=2.7,<3` on Python 3.10–3.13. Pin compatible AgentBarrier and
+> framework versions and run application-specific tests before connecting consequential tools.
 
 Google ADK automatically turns Python functions into `FunctionTool` objects, generates their model
 schema from the signature, and injects a type-annotated `ToolContext` without exposing it to the

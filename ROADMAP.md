@@ -3,6 +3,9 @@
 AgentBarrier's roadmap is organized around one outcome: make control-plane safety regressions easy
 to reproduce locally, enforce in CI, and prevent at the production effect boundary.
 
+The 0.4, 0.5, and 0.6 sections record completed development milestones. They were consolidated into
+the first stable production candidate, 1.0.0, rather than published as separate package versions.
+
 ## 0.2.0 — broader framework coverage
 
 - [x] Add a PydanticAI adapter and credential-free integration tests.

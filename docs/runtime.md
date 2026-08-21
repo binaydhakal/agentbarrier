@@ -1,7 +1,7 @@
 # Runtime enforcement
 
-> Runtime enforcement is available in AgentBarrier 0.4.0. The API is pre-1.0 and follows the
-> documented lifecycle and migration contract while it evolves.
+> Runtime enforcement is part of AgentBarrier's stable 1.x API and follows the documented
+> lifecycle, compatibility, and migration contract.
 
 AgentBarrier runtime protects a consequential Python function immediately before it crosses the
 effect boundary. An ordered policy allows, denies, or pauses the exact call for approval. SQLite

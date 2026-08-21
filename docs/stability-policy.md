@@ -1,8 +1,7 @@
 # Stability and migration policy
 
-This document defines the compatibility contract that begins with AgentBarrier 1.0.0. Releases
-before 1.0 remain development releases and can change with documented migration notes. Applications
-should pin an exact pre-1.0 version.
+This document defines the compatibility contract for AgentBarrier 1.x. Historical releases before
+1.0 were development releases and are outside this compatibility and security-support promise.
 
 ## Versioning promise
 

@@ -1,7 +1,7 @@
 # Approval HTTP API
 
-> The approval API is available on the main branch. Bind it to loopback or a trusted private
-> ingress until the complete 1.0 deployment audit is finished.
+> The approval API is part of AgentBarrier's stable 1.x package. Bind it to loopback or trusted
+> private ingress and follow the production deployment guide for shared use.
 
 The API lets an operator or internal service inspect pending actions and record
 approval decisions without direct shell access to the runtime database. Reviewer identity comes
@@ -13,13 +13,9 @@ the bearer credential for a protected opaque browser session.
 
 ## Install
 
-Until 0.5.0 is released, install the service dependencies from the main branch:
-
 ```bash
-python -m pip install 'agentbarrier[service] @ git+https://github.com/binaydhakal/agentbarrier.git'
+python -m pip install 'agentbarrier[service]'
 ```
-
-After release, use `python -m pip install 'agentbarrier[service]'` from PyPI.
 
 ## Create a strong bearer credential
 

@@ -1,7 +1,6 @@
 # Runtime API reference
 
-> The runtime API is public in AgentBarrier 0.4.0 and may change before 1.0 with documented release
-> notes and migrations. Beginning with 1.0.0, exported names follow the
+> The runtime API is stable in AgentBarrier 1.x. Exported names follow the
 > [stability and migration policy](stability-policy.md). Import public runtime symbols from
 > `agentbarrier.runtime` and runtime exceptions from `agentbarrier.errors`.
 

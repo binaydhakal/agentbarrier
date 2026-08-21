@@ -6,8 +6,23 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-08-21
+
+AgentBarrier 1.0.0 consolidates the completed 0.4 runtime, 0.5 integration, and 0.6 team-operations
+development milestones into the first stable production release. Those milestone versions were
+not separately published.
+
 ### Added
 
+- Ordered runtime policy rules with deterministic allow, deny, and require-approval decisions.
+- Sync and async Python function protection with exact argument and policy-version binding.
+- Transactional SQLite approval state, atomic execution claims, idempotent result replay, approval
+  expiry, fail-closed unknown outcomes, execution leases, abandoned-worker recovery, and automatic
+  schema migration.
+- Integrity-linked runtime receipts and CLI workflows for listing, inspecting, approving,
+  rejecting, reconciling, auditing, migrating, backing up, and inspecting runtime databases.
+- Strict runtime policy JSON Schema, condition validation, public runtime API reference, threat
+  model, credential-free refund example, and installed-wheel lifecycle audit.
 - A documented 1.x stability and migration policy, explicit public exports for runtime exceptions,
   service webhooks, and MCP runners, plus CI contract snapshots for exported names and critical
   callable signatures.
@@ -84,23 +99,6 @@ All notable changes to this project will be documented in this file. The format 
   cancellation safety, business idempotency, durable approval and replay, and conflicting native
   confirmation or streaming paths disabled.
 
-## [0.4.0] - 2026-08-20
-
-### Added
-
-- Ordered runtime policy rules with deterministic allow, deny, and require-approval decisions.
-- Sync and async Python function protection with exact argument and policy-version binding.
-- Transactional SQLite approval state, atomic execution claims, idempotent result replay, approval
-  expiry, and fail-closed unknown outcomes.
-- Integrity-linked runtime receipts and CLI workflows for listing, inspecting, approving,
-  rejecting, reconciling, and auditing actions.
-- Execution leases, fail-closed abandoned-worker recovery, explicit unknown-outcome reconciliation,
-  and automatic SQLite schema migration.
-- Strict runtime policy JSON Schema, condition validation, public runtime API reference, and runtime
-  threat model.
-- Runtime database status, migration, and non-overwriting integrity-checked backup commands.
-- Credential-free runtime refund example and a versioned delivery plan through 1.0.0.
-
 ## [0.3.0] - 2026-08-20
 
 ### Added
@@ -160,8 +158,8 @@ All notable changes to this project will be documented in this file. The format 
 - Console, JSON, JUnit, and SARIF reports.
 - CLI, pytest fixture, Python 3.10–3.13 support, and strict type checking.
 
-[Unreleased]: https://github.com/binaydhakal/agentbarrier/compare/v0.4.0...HEAD
-[0.4.0]: https://github.com/binaydhakal/agentbarrier/compare/v0.3.0...v0.4.0
+[Unreleased]: https://github.com/binaydhakal/agentbarrier/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/binaydhakal/agentbarrier/compare/v0.3.0...v1.0.0
 [0.3.0]: https://github.com/binaydhakal/agentbarrier/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/binaydhakal/agentbarrier/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/binaydhakal/agentbarrier/compare/v0.1.0...v0.2.0

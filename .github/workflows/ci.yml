@@ -172,6 +172,11 @@ jobs:
       - run: uv sync --locked --extra test
       - run: uv build
       - run: uv run twine check dist/*
+      - name: Verify release-candidate metadata
+        run: >-
+          uv run python tools/check_release_candidate.py
+          --dist-dir dist
+          --require-release-docs
       - name: Audit clean wheel runtime lifecycles
         run: |
           uv venv --python 3.11 build/wheel-audit

@@ -24,6 +24,7 @@ from mcp.types import (
 from starlette.testclient import TestClient
 
 import agentbarrier.mcp.runner as mcp_runner
+from agentbarrier import __version__
 from agentbarrier.mcp import (
     AGENTBARRIER_ACTION_META_KEY,
     AGENTBARRIER_ERROR_META_KEY,
@@ -130,7 +131,7 @@ def test_mcp_gateway_forwards_discovery_and_replays_allowed_call(tmp_path: Path)
                     namespace="support-mcp",
                 ),
                 client_factory=lambda: Client(upstream, cache=None),
-                version="0.5.0.dev0",
+                version=__version__,
             )
             async with Client(gateway.server, cache=None) as client:
                 tools = await client.list_tools()

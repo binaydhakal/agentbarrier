@@ -2,7 +2,8 @@
 
 AgentBarrier is a runtime policy gateway and approval control plane with a deterministic safety
 test suite. Its primary production job is to mediate real agent actions; the test suite makes every
-runtime guarantee reproducible in CI.
+runtime guarantee reproducible in CI. The 0.4, 0.5, and 0.6 headings below record implementation
+milestones that were completed on `main`; the consolidated public production contract is 1.0.0.
 
 ## Boundary and invariants
 
@@ -56,7 +57,7 @@ Deliverables:
 - runtime adapters for the supported agent frameworks where the real tool boundary is available;
 - protocol-level conformance fixtures that do not require model credentials.
 
-The development branch now has the transport-neutral runtime boundary; stdio and authenticated
+The package has the transport-neutral runtime boundary; stdio and authenticated
 Streamable HTTP MCP gateways; upstream bearer injection; a scoped approval API; a durable signed
 webhook worker; and OpenAI Agents, LangGraph, PydanticAI, and Google ADK runtime tool builders. Raw
 transport fixtures cover the supported protocol boundary. The core, MCP, LangGraph, PydanticAI,
@@ -88,7 +89,7 @@ Release gates:
 - forged, replayed, expired, and unauthorized Slack requests are rejected;
 - limits remain atomic under concurrent workers and the emergency pause fails closed.
 
-The main branch now contains durable scoped emergency pauses with atomic fixed-window action and
+The package contains durable scoped emergency pauses with atomic fixed-window action and
 integer-value budgets; a server-rendered approval dashboard with opaque scoped sessions,
 identity-bound decisions, CSRF protection, browser isolation headers, responsive accessible markup,
 and a clean-wheel lifecycle audit; and a PostgreSQL store with explicit migrations,

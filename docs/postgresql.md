@@ -1,6 +1,7 @@
 # PostgreSQL runtime storage
 
-> PostgreSQL support is available on the main branch and is not part of the current PyPI release.
+> PostgreSQL support is part of AgentBarrier's stable 1.x package. Run migrations with a dedicated
+> owner role and give live services only the documented runtime privileges.
 
 Use PostgreSQL when multiple AgentBarrier processes, gateways, API instances, or workers need one
 durable approval and execution boundary. It preserves the same request binding, single execution
@@ -9,7 +10,7 @@ claim, replay, pause, limit, and integrity-linked receipt behavior as the SQLite
 ## Install
 
 ```bash
-python -m pip install 'agentbarrier[postgres] @ git+https://github.com/binaydhakal/agentbarrier.git'
+python -m pip install 'agentbarrier[postgres]'
 ```
 
 AgentBarrier depends on the Psycopg interface. A deployment may choose the system, binary, or pool

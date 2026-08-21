@@ -1,8 +1,7 @@
 # Approval dashboard
 
-> The dashboard is under development for AgentBarrier 0.6.0. Its authenticated, single-node
-> workflow is available on the main branch. Production deployments still need trusted TLS ingress,
-> rate limiting, secret management, and network isolation.
+> The dashboard is part of AgentBarrier's stable 1.x package. Production deployments still need
+> trusted TLS ingress, rate limiting, secret management, and network isolation.
 
 The dashboard is a small server-rendered interface for people who need to inspect and decide exact
 AgentBarrier actions without database or shell access. It reads the same runtime store as the
@@ -15,13 +14,9 @@ and responsive layouts are included in the supported interface.
 
 ## Install
 
-Until 0.6.0 is released, install the optional service dependencies from the main branch:
-
 ```bash
-python -m pip install 'agentbarrier[service] @ git+https://github.com/binaydhakal/agentbarrier.git'
+python -m pip install 'agentbarrier[service]'
 ```
-
-After release, use `python -m pip install 'agentbarrier[service]'` from PyPI.
 
 ## Configure reviewer identities
 

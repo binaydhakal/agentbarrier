@@ -111,6 +111,14 @@ SQLite and PostgreSQL backends. A clean virtual environment installs the built w
 pending, approval, execution, replay, pause, limit, and receipt-chain behavior against PostgreSQL;
 this guards against source-tree-only dependency or packaging mistakes. The core and live
 PostgreSQL jobs each enforce at least 90 percent branch coverage in their respective environments.
-The package job also installs the built wheel with Slack service dependencies and completes a
-credential-free pending → posted → signed member approval → replay-safe decision audit. No network
-request or real Slack credential is used.
+The package job also installs the built wheel in clean, dependency-specific environments and
+exercises MCP forwarding, dashboard decisions, organization isolation, signed Slack interactions,
+signed webhook retry and redaction, OpenTelemetry privacy, schema-v1 recovery, and the OpenAI
+Agents, LangGraph, PydanticAI, and Google ADK runtime boundaries. No provider, Slack, or webhook
+credential is used.
+
+For a final release, `tools/check_release_candidate.py` binds the `vX.Y.Z` tag to the literal source
+version, the wheel and source-distribution filenames, both embedded metadata versions, release
+notes, and the changelog. It records SHA-256 hashes for both artifacts. The PyPI workflow checks the
+same tag source and refuses to upload a conflicting artifact set or a version that is already
+published with different hashes.

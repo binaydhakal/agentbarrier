@@ -1,7 +1,7 @@
 # Slack approvals
 
-> Slack support is available on the main branch for the planned AgentBarrier 0.6.0 release. It is
-> not part of the current PyPI release.
+> Slack support is part of AgentBarrier's stable 1.x package. Use a private channel, a dedicated
+> app, and the strict workspace, channel, and member allowlists described below.
 
 AgentBarrier can post pending runtime actions to one private Slack channel and accept an approve or
 reject decision from explicitly configured workspace members. Slack is a human interface only: the
@@ -20,16 +20,11 @@ Protected Python or MCP action
             +------------ exact binding -----------+
 ```
 
-## Install from the development branch
-
-Until 0.6.0 is released, install the optional Slack dependencies from the main branch:
+## Install
 
 ```bash
-python -m pip install \
-  'agentbarrier[slack] @ git+https://github.com/binaydhakal/agentbarrier.git'
+python -m pip install 'agentbarrier[slack]'
 ```
-
-After release, use `python -m pip install 'agentbarrier[slack]'` from PyPI.
 
 ## Create the Slack app
 
