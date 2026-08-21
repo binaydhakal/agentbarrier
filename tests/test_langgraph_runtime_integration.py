@@ -209,7 +209,7 @@ def test_langgraph_runtime_cancellation_is_unknown_and_cannot_commit_later(
                 content="",
                 tool_calls=[tool_call("model-call-timeout", request_id="timeout-1", amount=5)],
             )
-            with pytest.raises(TimeoutError):
+            with pytest.raises(asyncio.TimeoutError):
                 await asyncio.wait_for(graph.ainvoke({"messages": [message]}), timeout=0.01)
             await asyncio.sleep(0.12)
             assert effects == []

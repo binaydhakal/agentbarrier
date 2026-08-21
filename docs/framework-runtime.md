@@ -4,9 +4,9 @@ Framework runtime integrations put AgentBarrier immediately around a framework t
 Python callable. They are different from the compatibility adapters in `agentbarrier.adapters`,
 which exercise deterministic sentinel tools to test framework lifecycle guarantees.
 
-The development integrations support OpenAI Agents Python, LangGraph, and PydanticAI. Other
-evaluated frameworks remain 0.5.0 release work where their real callable boundary can be protected
-without weakening the runtime contract.
+The development integrations support OpenAI Agents Python, LangGraph, PydanticAI, and Google Agent
+Development Kit. Other evaluated frameworks remain 0.5.0 release work where their real callable
+boundary can be protected without weakening the runtime contract.
 
 ## OpenAI Agents Python
 
@@ -344,3 +344,107 @@ The test suite runs a real PydanticAI `Agent`, `Tool`, `RunContext`, and credent
 `FunctionModel` through approval, execution, replay, binding conflict, cancellation, post-claim
 failure, and suppressed framework retry. Complete mediation still requires the application to keep
 the original callable and downstream credentials outside every model-controlled route.
+
+## Google Agent Development Kit
+
+> This integration is under development for AgentBarrier 0.5.0 and currently targets
+> `google-adk>=2.7,<3` on Python 3.10–3.13. Pin an exact pre-3.0 version and run application-specific
+> tests before connecting consequential tools.
+
+Google ADK automatically turns Python functions into `FunctionTool` objects, generates their model
+schema from the signature, and injects a type-annotated `ToolContext` without exposing it to the
+model. AgentBarrier's `runtime_function_tool` returns that normal ADK tool while policy, approval,
+exact binding, execution claims, replay, and receipts surround the original async callable. See
+Google's official [function tools guide](https://adk.dev/tools-custom/function-tools/).
+
+Install the optional integration:
+
+```bash
+python -m pip install 'agentbarrier[google-adk]'
+```
+
+Build and register a protected function tool:
+
+```python
+from typing import Any
+
+from google.adk.agents import Agent
+from google.adk.tools import ToolContext
+
+from agentbarrier.integrations.google_adk import runtime_function_tool
+from agentbarrier.runtime import RuntimeBarrier, RuntimePolicy, SQLiteRuntimeStore
+
+
+async def refund_payment(
+    request_id: str,
+    amount: int,
+    tool_context: ToolContext,
+) -> dict[str, object]:
+    """Refund one exact payment request."""
+    payment_client: Any = tool_context.state["payment_client"]
+    return await payment_client.refund(request_id=request_id, amount=amount)
+
+
+store = SQLiteRuntimeStore("agentbarrier.db")
+barrier = RuntimeBarrier(
+    policy=RuntimePolicy.from_file("policy.json"),
+    store=store,
+    namespace="support-agent",
+)
+refund_tool = runtime_function_tool(
+    refund_payment,
+    barrier=barrier,
+    idempotency_key="request_id",
+    name="payments_refund",
+    description="Refund one exact payment request.",
+)
+agent = Agent(
+    name="support_agent",
+    model="gemini-2.5-flash",
+    tools=[refund_tool],
+)
+```
+
+Keep the store open for the ADK service lifetime. A gated call raises AgentBarrier's
+`ApprovalRequired` to the runner host before `refund_payment` runs. After an authenticated reviewer
+approves the action, retry or resume with the same `request_id` and exact arguments. A new
+`tool_context.function_call_id`, invocation ID, session ID, or model turn does not change the
+durable operation identity.
+
+### Async and fail-closed settings
+
+The integration accepts async functions only. ADK runs synchronous functions in worker threads,
+which cannot be reliably stopped by cancellation. Streaming `input_stream` tools, variadic or
+positional-only parameters, generators, async generators, and opaque callable objects are also
+rejected because their effect can escape the inspected callable boundary or their values are not
+represented in ADK's model schema.
+
+ADK native `require_confirmation` remains false. AgentBarrier must be the only approval authority,
+because its decision is bound to durable business identity, canonical arguments, policy version,
+and an atomic execution claim. Use a stable application-controlled key such as a payment request,
+outbox record, deployment request, or message ID. Do not use `ToolContext.function_call_id`.
+
+ADK's tool callbacks are powerful enough to skip a tool, replace its result, mutate its arguments,
+or suppress an exception. The official
+[callback guide](https://adk.dev/callbacks/types-of-callbacks/) says that a non-`None`
+`on_tool_error_callback` result becomes the tool result instead of propagating the exception. For
+protected tools:
+
+- `before_tool_callback` may validate or mutate arguments, but it must not execute the
+  consequential operation itself. AgentBarrier evaluates the final arguments passed to the tool.
+- A `before_tool_callback` result skips the protected tool entirely. Do not use that path to return
+  a cached consequential result unless the cache has the same durable binding guarantees.
+- `on_tool_error_callback` must return `None` for AgentBarrier and post-claim application
+  exceptions so approval, denial, binding conflict, and unknown outcomes reach the host.
+- `after_tool_callback` must not reinterpret an uncertain operation as success. It runs only after
+  the protected tool returns, so use it only for display-safe post-processing.
+
+Missing required arguments are rejected by ADK before the protected callable is entered. The
+original function's model-controlled parameters and result must be JSON-compatible with
+AgentBarrier's store. Async code must use cancellation-aware I/O and must not hide blocking worker
+work that can commit after cancellation.
+
+The test suite and clean-wheel audit invoke a real ADK `FunctionTool` and injected `ToolContext`
+through approval, execution, replay, binding conflict, cancellation, and post-claim failure without
+model credentials. Complete mediation still requires every route to the consequential client to
+use the returned tool and keep the original callable and credentials outside model-controlled code.

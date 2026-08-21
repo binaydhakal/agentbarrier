@@ -122,6 +122,12 @@ command, URL, API token, or network route remains available to the agent.
   after a claim into a host-visible runtime failure. Toolset-level timeouts, execution hooks that
   convert exceptions, synchronous or blocking work inside an async function, and direct access to
   the original callable remain application-controlled bypass or late-effect risks.
+- The Google ADK runtime builder excludes injected `ToolContext`, requires async non-streaming
+  callables, and disables native confirmation. ADK callbacks can mutate arguments, skip execution,
+  replace results, or suppress tool exceptions; an `on_tool_error_callback` must return `None` for
+  protected-tool failures, and callbacks must never call the consequential operation directly.
+  Blocking work hidden inside an async function and direct access to the original callable remain
+  application-controlled bypass or late-effect risks.
 
 ## Out of scope
 

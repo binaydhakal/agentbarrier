@@ -33,6 +33,9 @@ All notable changes to this project will be documented in this file. The format 
 - PydanticAI runtime tool builder with `RunContext` exclusion, async cancellation safety, business
   idempotency, durable approval and replay, and suppression of framework retry, failure, and
   deferred-call signals after an execution claim.
+- Google ADK runtime `FunctionTool` builder with injected `ToolContext` exclusion, async
+  cancellation safety, business idempotency, durable approval and replay, and conflicting native
+  confirmation or streaming paths disabled.
 
 ## [0.4.0] - 2026-08-20
 

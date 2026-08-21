@@ -133,6 +133,8 @@ jobs:
           build/wheel-audit/bin/python tools/audit_langgraph_wheel.py
           uv pip install --python build/wheel-audit/bin/python "pydantic-ai-slim>=2.32,<3"
           build/wheel-audit/bin/python tools/audit_pydantic_ai_wheel.py
+          uv pip install --python build/wheel-audit/bin/python "google-adk>=2.7,<3"
+          build/wheel-audit/bin/python tools/audit_google_adk_wheel.py
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: distributions

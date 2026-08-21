@@ -50,3 +50,19 @@ def test_pydantic_ai_wheel_audit_executes_effect_once(tmp_path: Path) -> None:
         "execution_succeeded",
         "result_replayed",
     ]
+
+
+def test_google_adk_wheel_audit_executes_effect_once(tmp_path: Path) -> None:
+    pytest.importorskip("google.adk", reason="Google ADK optional dependency is not installed")
+    from tools.audit_google_adk_wheel import run_audit as run_google_adk_audit
+
+    result = run_google_adk_audit(tmp_path)
+    assert result["status"] == "passed"
+    assert result["effect_count"] == 1
+    assert result["events"] == [
+        "approval_requested",
+        "approved",
+        "execution_started",
+        "execution_succeeded",
+        "result_replayed",
+    ]
