@@ -11,6 +11,7 @@ import os
 import sys
 from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, cast
 
@@ -31,7 +32,7 @@ from agentbarrier.models import Decision as RuntimeDecision
 from agentbarrier.reporters import render_console, write_json, write_junit, write_sarif
 from agentbarrier.runner import RunnerOptions, SuiteRunner
 from agentbarrier.runtime.factory import open_runtime_store
-from agentbarrier.runtime.models import RuntimeReconciliation, RuntimeStatus
+from agentbarrier.runtime.models import RuntimeAction, RuntimeReconciliation, RuntimeStatus
 from agentbarrier.runtime.protocol import RuntimeStore
 from agentbarrier.runtime.serialization import (
     action_payload,
@@ -123,6 +124,17 @@ def build_parser() -> argparse.ArgumentParser:
     _add_runtime_db_option(approval_show)
     approval_show.add_argument("--json", action="store_true", help="write JSON to stdout")
     approval_show.set_defaults(handler=_run_approvals_show)
+
+    approval_review = approval_commands.add_parser(
+        "review",
+        help="interactively select and decide a pending action",
+    )
+    _add_runtime_db_option(approval_review)
+    approval_review.add_argument(
+        "--decided-by",
+        help="reviewer identity (default: current operating-system user)",
+    )
+    approval_review.set_defaults(handler=_run_approvals_review)
 
     for name, decision in (
         ("approve", RuntimeDecision.APPROVE),
@@ -637,6 +649,109 @@ def _run_approvals_show(arguments: argparse.Namespace) -> int:
             )
             print(f"{key}: {rendered}")
     return 0
+
+
+def _run_approvals_review(arguments: argparse.Namespace) -> int:
+    if not _interactive_terminal_available():
+        raise ValueError(
+            "interactive review requires a terminal; use approvals approve or reject "
+            "for non-interactive automation"
+        )
+    decided_by = cast(str | None, arguments.decided_by) or getpass.getuser()
+    if not decided_by.strip():
+        raise ValueError("reviewer identity must not be empty")
+
+    with _open_cli_runtime_store(arguments) as store:
+        while True:
+            pending = store.list_actions(status=RuntimeStatus.PENDING)
+            if not pending:
+                print("No pending runtime actions found.")
+                return 0
+            print("Pending runtime actions:")
+            for index, action in enumerate(pending, start=1):
+                requester = action.requested_by or "-"
+                print(
+                    f"[{index}] {action.tool_name}  namespace={action.namespace}  "
+                    f"requested_by={requester}  id={action.action_id}"
+                )
+            print("[q] Quit without deciding")
+            selection = _read_interactive_input("Select an action: ").lower()
+            if selection in {"q", "quit"}:
+                print("No decision recorded.")
+                return 0
+            if not selection.isdecimal() or not 1 <= int(selection) <= len(pending):
+                print(f"Choose a number from 1 to {len(pending)}, or q to quit.")
+                continue
+
+            action = pending[int(selection) - 1]
+            _print_interactive_action(action)
+            while True:
+                choice = _read_interactive_input(
+                    "[a] Approve  [r] Reject  [b] Back  [q] Quit: "
+                ).lower()
+                if choice in {"b", "back"}:
+                    print()
+                    break
+                if choice in {"q", "quit"}:
+                    print("No decision recorded.")
+                    return 0
+                decisions = {
+                    "a": RuntimeDecision.APPROVE,
+                    "approve": RuntimeDecision.APPROVE,
+                    "r": RuntimeDecision.REJECT,
+                    "reject": RuntimeDecision.REJECT,
+                }
+                decision = decisions.get(choice)
+                if decision is None:
+                    print("Choose a, r, b, or q.")
+                    continue
+                reason = _read_interactive_input("Reason (optional): ") or None
+                decided = store.decide(
+                    action.action_id,
+                    decision,
+                    decided_by=decided_by,
+                    reason=reason,
+                )
+                past_tense = "approved" if decision is RuntimeDecision.APPROVE else "rejected"
+                print(f"{past_tense} {decided.action_id} ({decided.tool_name})")
+                return 0
+
+
+def _print_interactive_action(action: RuntimeAction) -> None:
+    print()
+    print("Review this exact action:")
+    print(f"  action_id: {action.action_id}")
+    print(f"  organization: {action.organization_id}")
+    print(f"  namespace: {action.namespace}")
+    print(f"  requested_by: {action.requested_by or '-'}")
+    print(f"  tool: {action.tool_name}")
+    print(f"  policy: {action.policy_rule} ({action.policy_version})")
+    print(f"  idempotency_key: {action.idempotency_key}")
+    print(f"  request_digest: {action.request_digest}")
+    print(f"  created_at: {_format_timestamp_ns(action.created_at_ns)}")
+    print("  arguments:")
+    rendered = json.dumps(dict(action.arguments), indent=2, sort_keys=True)
+    for line in rendered.splitlines():
+        print(f"    {line}")
+    if action.expires_at_ns is not None:
+        print(f"  approval_expires_at: {_format_timestamp_ns(action.expires_at_ns)}")
+    print()
+
+
+def _format_timestamp_ns(value: int) -> str:
+    rendered = datetime.fromtimestamp(value / 1_000_000_000, tz=timezone.utc).isoformat()
+    return rendered.replace("+00:00", "Z")
+
+
+def _read_interactive_input(prompt: str) -> str:
+    try:
+        return input(prompt).strip()
+    except EOFError as error:
+        raise ValueError("interactive review ended before a decision was recorded") from error
+
+
+def _interactive_terminal_available() -> bool:
+    return sys.stdin.isatty() and sys.stdout.isatty()
 
 
 def _run_approval_decision(arguments: argparse.Namespace) -> int:

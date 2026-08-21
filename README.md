@@ -115,6 +115,16 @@ The model can propose the action but cannot change the reviewed arguments afterw
 same approved operation to execute twice through a retry. With organization authorization and
 requester/reviewer separation enabled, its service identity also cannot approve its own request.
 
+For local review, a human can select a pending action and decide it without copying identifiers:
+
+```bash
+agentbarrier approvals review --db agentbarrier.db --decided-by alice
+```
+
+The terminal menu shows the exact arguments and binding before offering Approve, Reject, Back, or
+Quit. Production reviewers should use the authenticated dashboard, API, or Slack integration
+because the local CLI reviewer identity is asserted by its caller.
+
 ## Stop or limit live agent actions
 
 Use the same runtime database as the protected application or MCP gateway. A global pause takes

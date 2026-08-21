@@ -6,6 +6,13 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+### Added
+
+- Interactive `agentbarrier approvals review` selection with exact action details and
+  Approve/Reject/Back/Quit choices, plus an immediate one-command decision menu in the local refund
+  demonstration. Non-interactive approvals remain explicit and production reviewers retain the
+  authenticated dashboard, API, and Slack paths.
+
 ## [1.0.0] - 2026-08-21
 
 AgentBarrier 1.0.0 consolidates the completed 0.4 runtime, 0.5 integration, and 0.6 team-operations

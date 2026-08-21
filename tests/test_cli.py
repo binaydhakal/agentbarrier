@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+import agentbarrier.cli as cli_module
 from agentbarrier import __version__
 from agentbarrier.cli import main
 from agentbarrier.mcp import runner as mcp_runner
@@ -405,7 +406,12 @@ def test_verify_cli_rejects_invalid_targets(target: str) -> None:
     assert exc.value.code == 2
 
 
-def _pending_runtime_action(path: Path, *, action_id: str = "runtime-action") -> str:
+def _pending_runtime_action(
+    path: Path,
+    *,
+    action_id: str = "runtime-action",
+    approval_ttl_seconds: float | None = None,
+) -> str:
     request = RuntimeRequest(
         action_id=action_id,
         namespace="billing",
@@ -418,7 +424,12 @@ def _pending_runtime_action(path: Path, *, action_id: str = "runtime-action") ->
     with SQLiteRuntimeStore(path) as store:
         store.submit(
             request,
-            PolicyDecision(PolicyEffect.REQUIRE_APPROVAL, "review refunds", "1"),
+            PolicyDecision(
+                PolicyEffect.REQUIRE_APPROVAL,
+                "review refunds",
+                "1",
+                approval_ttl_seconds=approval_ttl_seconds,
+            ),
         )
     return request.action_id
 
@@ -516,6 +527,96 @@ def test_runtime_approval_cli_rejects_and_handles_empty_lists(
         == 0
     )
     assert "rejected reject-me" in capsys.readouterr().out
+
+
+def test_runtime_approval_cli_interactively_selects_and_approves(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "runtime.db"
+    action_id = _pending_runtime_action(
+        path,
+        action_id="interactive-approve",
+        approval_ttl_seconds=3_600,
+    )
+    responses = iter(["9", "1", "invalid", "a", "ticket-456"])
+    monkeypatch.setattr(cli_module, "_interactive_terminal_available", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda _: next(responses))
+
+    assert (
+        main(
+            [
+                "approvals",
+                "review",
+                "--db",
+                str(path),
+                "--decided-by",
+                "alice",
+            ]
+        )
+        == 0
+    )
+    output = capsys.readouterr().out
+    assert "Pending runtime actions:" in output
+    assert "Choose a number from 1 to 1" in output
+    assert '"amount": 100' in output
+    assert "created_at: 1970-01-01T00:00:00" in output
+    assert "approval_expires_at:" in output
+    assert "approval_expires_at_ns:" not in output
+    assert "Choose a, r, b, or q." in output
+    assert f"approved {action_id}" in output
+    with SQLiteRuntimeStore(path) as store:
+        action = store.get_action(action_id)
+        assert action.status is RuntimeStatus.APPROVED
+        assert action.decided_by == "alice"
+        assert action.decision_reason == "ticket-456"
+
+
+def test_runtime_approval_cli_interactively_rejects(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "runtime.db"
+    action_id = _pending_runtime_action(path, action_id="interactive-reject")
+    responses = iter(["1", "r", "request is unsafe"])
+    monkeypatch.setattr(cli_module, "_interactive_terminal_available", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda _: next(responses))
+
+    assert main(["approvals", "review", "--db", str(path), "--decided-by", "bob"]) == 0
+    assert f"rejected {action_id}" in capsys.readouterr().out
+    with SQLiteRuntimeStore(path) as store:
+        action = store.get_action(action_id)
+        assert action.status is RuntimeStatus.REJECTED
+        assert action.decided_by == "bob"
+        assert action.decision_reason == "request is unsafe"
+
+
+def test_runtime_approval_cli_interactive_review_can_go_back_and_quit(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "runtime.db"
+    action_id = _pending_runtime_action(path, action_id="interactive-quit")
+    responses = iter(["1", "b", "q"])
+    monkeypatch.setattr(cli_module, "_interactive_terminal_available", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda _: next(responses))
+
+    assert main(["approvals", "review", "--db", str(path)]) == 0
+    assert "No decision recorded." in capsys.readouterr().out
+    with SQLiteRuntimeStore(path) as store:
+        assert store.get_action(action_id).status is RuntimeStatus.PENDING
+
+
+def test_runtime_approval_cli_interactive_review_requires_terminal(tmp_path: Path) -> None:
+    path = tmp_path / "runtime.db"
+    _pending_runtime_action(path)
+
+    with pytest.raises(SystemExit) as exc:
+        main(["approvals", "review", "--db", str(path)])
+    assert exc.value.code == 2
 
 
 def test_runtime_cli_normalizes_unknown_action_to_usage_error(tmp_path: Path) -> None:

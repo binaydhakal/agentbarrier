@@ -75,6 +75,19 @@ reviewing its own action. See [multi-user authorization](multi-user-authorizatio
 
 ## Review from the CLI
 
+For a trusted local operator, open the interactive reviewer instead of copying an action ID:
+
+```bash
+agentbarrier approvals review --db agentbarrier.db --decided-by alice
+```
+
+The menu lists pending actions, displays the exact arguments, policy, requester, idempotency key,
+and request digest, then offers Approve, Reject, Back, or Quit. It requires an interactive terminal
+and never accepts a piped decision. The reviewer identity defaults to the current operating-system
+user when `--decided-by` is omitted.
+
+Explicit commands remain available for scripts and operational tooling:
+
 ```bash
 agentbarrier approvals list --db agentbarrier.db --status pending
 agentbarrier approvals show ACTION_ID --db agentbarrier.db --json
@@ -87,6 +100,10 @@ agentbarrier approvals approve ACTION_ID \
 Reject instead with `agentbarrier approvals reject`. Run the application call again after approval.
 AgentBarrier atomically claims the stored action, executes it once, records its JSON result, and
 returns that stored result on subsequent retries.
+
+The local CLI identity is asserted by the caller; an interactive terminal is a usability guard, not
+an authentication boundary. Use the authenticated dashboard, HTTP API, or Slack integration with
+requester/reviewer separation for shared or production decisions.
 
 ## Inspect audit receipts
 
@@ -232,4 +249,7 @@ uv run python -m examples.runtime_refund \
   --amount 100
 ```
 
-Use the printed approval command, then repeat the example command.
+In an interactive terminal, the example immediately shows the exact refund and offers:
+`Approve and execute`, `Reject`, or `Leave pending`. Approving records the reviewer and optional
+reason, then executes the refund in the same command. Non-interactive runs and actions left pending
+print both the interactive reviewer command and the explicit approval command for later use.
