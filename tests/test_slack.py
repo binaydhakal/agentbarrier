@@ -121,10 +121,15 @@ def submit_pending(
     *,
     action_id: str = "slack-action",
     arguments: Mapping[str, object] | None = None,
+    organization_id: str = "default",
+    requested_by: str | None = None,
+    namespace: str = "billing",
 ) -> RuntimeRequest:
     request = RuntimeRequest(
         action_id=action_id,
-        namespace="billing",
+        namespace=namespace,
+        organization_id=organization_id,
+        requested_by=requested_by,
         tool_name="payments.refund",
         arguments=dict(arguments or {"amount_cents": 2_500, "customer": "C-123"}),  # type: ignore[arg-type]
         idempotency_key=action_id,
@@ -527,6 +532,83 @@ def test_unauthorized_or_under_scoped_slack_member_cannot_decide(tmp_path: Path)
     assert [call["method"] for call in api.calls] == ["chat.postEphemeral", "chat.postEphemeral"]
 
 
+def test_v2_slack_config_filters_tenants_and_enforces_independent_reviewer(
+    tmp_path: Path,
+) -> None:
+    api = RecordingSlackAPI([(200, {"ok": True}, None), (200, {"ok": True}, None)])
+    config = make_config(
+        organization_id="acme",
+        namespaces=frozenset({"billing"}),
+        require_separate_approver=True,
+    )
+    with (
+        SQLiteRuntimeStore(tmp_path / "runtime.db") as runtime_store,
+        SlackNotificationStore(tmp_path / "slack.db") as notification_store,
+    ):
+        request = submit_pending(
+            runtime_store,
+            organization_id="acme",
+            requested_by="risk@example.com",
+        )
+        submit_pending(
+            runtime_store,
+            action_id="other-tenant",
+            organization_id="beta",
+            requested_by="other-agent",
+        )
+        worker = SlackWorker(
+            runtime_store=runtime_store,
+            notification_store=notification_store,
+            config=config,
+            api_caller=api,
+        )
+        assert worker.sync_pending() == 1
+        notification = notification_store.claim_due(worker_id="test-worker")
+        assert notification is not None
+        notification_store.mark_posted(
+            notification,
+            worker_id="test-worker",
+            message_ts="1700000000.123456",
+            status_code=200,
+        )
+        self_review = interaction_body(request.action_id, request.request_digest)
+        independent_review = interaction_body(
+            request.action_id,
+            request.request_digest,
+            user_id="U456ABC",
+        )
+        app = SlackInteractionService(
+            runtime_store=runtime_store,
+            notification_store=notification_store,
+            config=config,
+            api_caller=api,
+            clock_seconds=lambda: NOW_SECONDS,
+        ).app
+        with TestClient(app) as client:
+            assert (
+                client.post(
+                    "/slack/interactions",
+                    content=self_review,
+                    headers=signed_headers(self_review),
+                ).status_code
+                == 200
+            )
+            assert runtime_store.get_action(request.action_id).status is RuntimeStatus.PENDING
+            assert (
+                client.post(
+                    "/slack/interactions",
+                    content=independent_review,
+                    headers=signed_headers(independent_review),
+                ).status_code
+                == 200
+            )
+        action = runtime_store.get_action(request.action_id)
+
+    assert action.status is RuntimeStatus.APPROVED
+    assert action.decided_by == "slack:T123ABC:U456ABC:approver@example.com"
+    assert [call["method"] for call in api.calls] == ["chat.postEphemeral", "chat.update"]
+
+
 @pytest.mark.parametrize(
     ("body_change", "header_change", "status", "code"),
     [
@@ -688,7 +770,7 @@ def base_config_mapping() -> dict[str, object]:
 @pytest.mark.parametrize(
     ("change", "message"),
     [
-        ({"version": "2"}, "version"),
+        ({"version": "3"}, "version"),
         ({"workspace_id": 1}, "must be strings"),
         ({"bot_token_env": "MISSING"}, "is not set"),
         ({"reviewers": "not-a-list"}, "must be a list"),
@@ -747,6 +829,27 @@ def test_slack_config_rejects_duplicate_reviewers_bad_env_and_secret_characters(
                 for index in range(101)
             )
         )
+
+
+def test_slack_mapping_config_accepts_organization_authorization() -> None:
+    config = base_config_mapping()
+    config.update(
+        {
+            "version": "2",
+            "organization_id": "acme",
+            "namespaces": ["billing", "support"],
+            "require_separate_approver": True,
+        }
+    )
+
+    parsed = SlackConfig.from_mapping(
+        config,
+        environment={"SLACK_TOKEN": BOT_TOKEN, "SLACK_SECRET": SIGNING_SECRET},
+    )
+
+    assert parsed.organization_id == "acme"
+    assert parsed.namespaces == frozenset({"billing", "support"})
+    assert parsed.require_separate_approver is True
 
 
 def test_slack_config_requires_an_object(tmp_path: Path) -> None:

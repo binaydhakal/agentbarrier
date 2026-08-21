@@ -6,6 +6,7 @@ from typing import Protocol
 
 from agentbarrier.models import Decision, JsonValue
 from agentbarrier.runtime.models import (
+    DecisionAuthorization,
     ExecutionClaim,
     PolicyDecision,
     RuntimeAction,
@@ -31,6 +32,15 @@ class RuntimeStore(Protocol):
         decision: Decision,
         *,
         decided_by: str,
+        reason: str | None = None,
+    ) -> RuntimeAction: ...
+
+    def decide_authorized(
+        self,
+        action_id: str,
+        decision: Decision,
+        *,
+        authorization: DecisionAuthorization,
         reason: str | None = None,
     ) -> RuntimeAction: ...
 

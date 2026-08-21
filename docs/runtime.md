@@ -41,7 +41,13 @@ policy = RuntimePolicy(
 )
 
 store = SQLiteRuntimeStore("agentbarrier.db")
-barrier = RuntimeBarrier(policy=policy, store=store, namespace="support-agent")
+barrier = RuntimeBarrier(
+    policy=policy,
+    store=store,
+    namespace="support-agent",
+    organization_id="acme",
+    requested_by="refund-agent",
+)
 
 
 def refund(request_id: str, account_id: str, amount: int) -> dict[str, object]:
@@ -62,6 +68,10 @@ non-empty string that uniquely identifies the intended business operation.
 Calling an allowed action executes immediately. A reviewed action raises `ApprovalRequired` before
 the protected function starts. Reusing its idempotency key with different arguments or a different
 policy version raises `ActionBindingError`.
+
+Organization and requester identity are part of the exact request binding. Pair them with a
+version 2 approval auth file to isolate tenants and prevent the requesting service identity from
+reviewing its own action. See [multi-user authorization](multi-user-authorization.md).
 
 ## Review from the CLI
 

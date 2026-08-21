@@ -28,7 +28,7 @@ from starlette.responses import HTMLResponse, PlainTextResponse, RedirectRespons
 from starlette.routing import Route
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from agentbarrier.errors import InvalidActionState, RuntimeActionError
+from agentbarrier.errors import ApprovalAuthorizationError, InvalidActionState, RuntimeActionError
 from agentbarrier.models import Decision
 from agentbarrier.runtime import RuntimeAction, RuntimeStatus, RuntimeStore
 from agentbarrier.service.auth import AuthenticationError, Principal, StaticBearerAuth
@@ -378,9 +378,22 @@ class ApprovalDashboard:
                     "Invalid filter",
                     "The selected action status is not recognized.",
                 ) from error
-        actions = self.store.list_actions(status=status)[:_MAX_DASHBOARD_ACTIONS]
-        pauses = self.store.list_pauses()
-        limits = self.store.list_limits()
+        principal = session.principal
+        actions = tuple(
+            action
+            for action in self.store.list_actions(status=status)
+            if principal.can_access_action(action)
+        )[:_MAX_DASHBOARD_ACTIONS]
+        pauses = tuple(
+            pause
+            for pause in self.store.list_pauses()
+            if principal.organization_id is None or pause.namespace in principal.namespaces
+        )
+        limits = tuple(
+            limit
+            for limit in self.store.list_limits()
+            if principal.organization_id is None or limit.namespace in principal.namespaces
+        )
         usage = {item.limit_id: item for item in self.store.limit_usage()}
         options = [
             f'<option value="all"{_selected(raw_status, "all")}>All</option>',
@@ -440,6 +453,8 @@ class ApprovalDashboard:
             raise DashboardError(
                 404, "Action not found", "The requested action does not exist."
             ) from error
+        if not session.principal.can_access_action(action):
+            raise DashboardError(404, "Action not found", "The requested action does not exist.")
         decision = request.query_params.get("decision")
         notice = ""
         if decision in {"approved", "rejected"}:
@@ -447,21 +462,50 @@ class ApprovalDashboard:
         elif decision is not None:
             raise DashboardError(400, "Invalid result", "The decision result is not recognized.")
         decision_forms = ""
-        if action.status is RuntimeStatus.PENDING and session.principal.has_scope("actions:decide"):
+        principal = session.principal
+        can_self_decide = not (
+            principal.organization_id is not None
+            and principal.require_separate_approver
+            and action.requested_by == principal.subject
+        )
+        can_approve = (
+            principal.has_scope("actions:decide")
+            and can_self_decide
+            and (principal.organization_id is None or Decision.APPROVE in principal.decisions)
+        )
+        can_reject = (
+            principal.has_scope("actions:decide")
+            and can_self_decide
+            and (principal.organization_id is None or Decision.REJECT in principal.decisions)
+        )
+        if action.status is RuntimeStatus.PENDING and (can_approve or can_reject):
             encoded_id = quote(action.action_id, safe="")
             csrf = html.escape(session.csrf_token, quote=True)
-            decision_forms = f"""
-            <section class="decision-grid" aria-label="Decision forms">
+            approve_form = (
+                f"""
               <form class="card" method="post" action="/dashboard/actions/{encoded_id}/approve">
                 <h2>Approve this exact action</h2><label for="approve-reason">Reason (optional)</label>
                 <textarea id="approve-reason" name="reason" maxlength="2000"></textarea>
                 <input type="hidden" name="csrf" value="{csrf}"><button type="submit">Approve action</button>
               </form>
+            """
+                if can_approve
+                else ""
+            )
+            reject_form = (
+                f"""
               <form class="card" method="post" action="/dashboard/actions/{encoded_id}/reject">
                 <h2>Reject this action</h2><label for="reject-reason">Reason (optional)</label>
                 <textarea id="reject-reason" name="reason" maxlength="2000"></textarea>
                 <input type="hidden" name="csrf" value="{csrf}"><button class="danger" type="submit">Reject action</button>
               </form>
+            """
+                if can_reject
+                else ""
+            )
+            decision_forms = f"""
+            <section class="decision-grid" aria-label="Decision forms">
+              {approve_form}{reject_form}
             </section>
             """
         elif action.status is RuntimeStatus.PENDING:
@@ -470,6 +514,7 @@ class ApprovalDashboard:
         <p><a href="/dashboard/">← Back to approval queue</a></p>{notice}
         <section class="card"><h1>Action details</h1><dl>
         {_detail("Action ID", action.action_id)}{_detail("Status", action.status.value)}
+        {_detail("Organization", action.organization_id)}{_detail("Requested by", action.requested_by or "—")}
         {_detail("Namespace", action.namespace)}{_detail("Tool", action.tool_name)}
         {_detail("Policy rule", action.policy_rule)}{_detail("Policy version", action.policy_version)}
         {_detail("Created", _timestamp(action.created_at_ns))}{_detail("Decided by", action.decided_by or "—")}
@@ -495,16 +540,30 @@ class ApprovalDashboard:
         reason = _validate_reason(form.get("reason"))
         action_id = _dashboard_action_id(request)
         try:
-            self.store.decide(
-                action_id,
-                decision,
-                decided_by=session.principal.subject,
-                reason=reason,
-            )
+            if session.principal.organization_id is None:
+                self.store.decide(
+                    action_id,
+                    decision,
+                    decided_by=session.principal.subject,
+                    reason=reason,
+                )
+            else:
+                self.store.decide_authorized(
+                    action_id,
+                    decision,
+                    authorization=session.principal.decision_authorization(),
+                    reason=reason,
+                )
         except KeyError as error:
             raise DashboardError(
                 404, "Action not found", "The requested action does not exist."
             ) from error
+        except ApprovalAuthorizationError as error:
+            if error.code in {"organization_mismatch", "namespace_forbidden"}:
+                raise DashboardError(
+                    404, "Action not found", "The requested action does not exist."
+                ) from error
+            raise DashboardError(403, "Decision forbidden", str(error)) from error
         except (InvalidActionState, RuntimeActionError) as error:
             raise DashboardError(
                 409,

@@ -17,7 +17,7 @@ from starlette.routing import Route
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from agentbarrier import __version__
-from agentbarrier.errors import InvalidActionState, RuntimeActionError
+from agentbarrier.errors import ApprovalAuthorizationError, InvalidActionState, RuntimeActionError
 from agentbarrier.models import Decision
 from agentbarrier.runtime import RuntimeStatus, RuntimeStore
 from agentbarrier.runtime.serialization import action_payload, receipt_payload
@@ -126,7 +126,7 @@ class ApprovalAPI:
         return JSONResponse(self.openapi)
 
     async def list_actions(self, request: Request) -> Response:
-        self._authorize(request, "actions:read")
+        principal = self._authorize(request, "actions:read")
         _reject_unknown_query(request, {"status", "limit", "after"})
         raw_status = _single_query_value(request, "status")
         try:
@@ -138,7 +138,11 @@ class ApprovalAPI:
                 message="status is not a recognized runtime action state",
             ) from error
         limit = _parse_limit(request)
-        actions = list(self.store.list_actions(status=status))
+        actions = [
+            action
+            for action in self.store.list_actions(status=status)
+            if principal.can_access_action(action)
+        ]
         after = _single_query_value(request, "after")
         if after is not None:
             for index, action in enumerate(actions):
@@ -161,13 +165,15 @@ class ApprovalAPI:
         )
 
     async def get_action(self, request: Request) -> Response:
-        self._authorize(request, "actions:read")
+        principal = self._authorize(request, "actions:read")
         _reject_unknown_query(request, set())
         action_id = _path_action_id(request)
         try:
             action = self.store.get_action(action_id)
         except KeyError as error:
             raise _not_found(action_id) from error
+        if not principal.can_access_action(action):
+            raise _not_found(action_id)
         return JSONResponse({"data": action_payload(action)})
 
     async def approve_action(self, request: Request) -> Response:
@@ -182,14 +188,30 @@ class ApprovalAPI:
         action_id = _path_action_id(request)
         reason = await _read_decision_reason(request)
         try:
-            action = self.store.decide(
-                action_id,
-                decision,
-                decided_by=principal.subject,
-                reason=reason,
-            )
+            if principal.organization_id is None:
+                action = self.store.decide(
+                    action_id,
+                    decision,
+                    decided_by=principal.subject,
+                    reason=reason,
+                )
+            else:
+                action = self.store.decide_authorized(
+                    action_id,
+                    decision,
+                    authorization=principal.decision_authorization(),
+                    reason=reason,
+                )
         except KeyError as error:
             raise _not_found(action_id) from error
+        except ApprovalAuthorizationError as error:
+            if error.code in {"organization_mismatch", "namespace_forbidden"}:
+                raise _not_found(action_id) from error
+            raise ServiceError(
+                status_code=403,
+                code=error.code,
+                message=str(error),
+            ) from error
         except (InvalidActionState, RuntimeActionError) as error:
             raise ServiceError(
                 status_code=409,
@@ -199,7 +221,7 @@ class ApprovalAPI:
         return JSONResponse({"data": action_payload(action)})
 
     async def list_audit(self, request: Request) -> Response:
-        self._authorize(request, "audit:read")
+        principal = self._authorize(request, "audit:read")
         _reject_unknown_query(request, {"action_id", "after_sequence", "limit"})
         action_id = _single_query_value(request, "action_id")
         if action_id is not None and (not action_id.strip() or len(action_id) > 128):
@@ -210,10 +232,17 @@ class ApprovalAPI:
             )
         after_sequence = _parse_nonnegative_integer(request, "after_sequence", default=0)
         limit = _parse_limit(request)
+        visible_action_ids = {
+            action.action_id
+            for action in self.store.list_actions()
+            if principal.can_access_action(action)
+        }
+        if action_id is not None and action_id not in visible_action_ids:
+            raise _not_found(action_id)
         receipts = [
             receipt
             for receipt in self.store.receipts(action_id=action_id)
-            if receipt.sequence > after_sequence
+            if receipt.sequence > after_sequence and receipt.action_id in visible_action_ids
         ]
         page = receipts[:limit]
         next_sequence = page[-1].sequence if len(receipts) > limit and page else None

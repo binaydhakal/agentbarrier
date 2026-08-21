@@ -53,7 +53,7 @@ Track the complete release in the [`0.4.0` milestone](https://github.com/binaydh
 ## 1.0.0 — stable production contract
 
 - [ ] Stabilize the public runtime API and publish a compatibility and migration policy.
-- [ ] Add multi-user roles, scoped authorization, and separation of requester and approver.
+- [x] Add multi-user roles, scoped authorization, and separation of requester and approver.
 - [ ] Add OpenTelemetry traces, metrics, and structured logs without recording secrets by default.
 - [ ] Publish production deployment, backup, recovery, upgrade, and threat-model documentation.
 - [ ] Complete independent release, install, migration, and end-to-end approval audits.

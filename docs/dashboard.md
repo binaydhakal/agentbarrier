@@ -28,7 +28,9 @@ After release, use `python -m pip install 'agentbarrier[service]'` from PyPI.
 The dashboard and approval API share the strict static auth-file format. Generate a high-entropy
 credential, store only its SHA-256 value, and grant the reviewer the minimum scopes it needs. The
 [approval API guide](approval-api.md#create-a-strong-bearer-credential) explains credential
-generation and the complete file format.
+generation. Shared deployments should use the version 2 organization and role format in the
+[multi-user authorization guide](multi-user-authorization.md); the version 1 example below is a
+legacy local configuration with global visibility.
 
 A dashboard identity needs `actions:read` to sign in. Add `actions:decide` only when it may approve
 or reject actions:
@@ -131,9 +133,10 @@ origins are accepted only when browser fetch metadata identifies them as same-or
 - The dashboard displays operational controls but does not change pauses or limits. Use the
   authenticated operating environment and `agentbarrier controls` commands for those changes.
 
-This is a secure single-node reviewer surface, not an identity provider. Single sign-on,
-organization membership, role administration, separation-of-duty rules, shared sessions, and
-immediate centralized revocation remain 1.0 work.
+This is a secure single-process reviewer surface, not an identity provider. Version 2 auth provides
+static organization membership, roles, per-decision permissions, and separation of duties. Single
+sign-on, a role-administration API, shared sessions, and immediate centralized revocation remain
+outside this component.
 
 ## Security verification
 

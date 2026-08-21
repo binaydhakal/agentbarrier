@@ -17,6 +17,8 @@ def action_payload(action: RuntimeAction) -> dict[str, object]:
 
     return {
         "action_id": action.action_id,
+        "organization_id": action.organization_id,
+        "requested_by": action.requested_by,
         "namespace": action.namespace,
         "tool_name": action.tool_name,
         "arguments": dict(action.arguments),

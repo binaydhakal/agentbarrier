@@ -131,6 +131,10 @@ command, URL, API token, or network route remains available to the agent.
   cannot infer whether an external side effect committed from a closed stream or protocol error.
 - Approval API reviewer identity comes only from the authenticated token subject. The JSON body
   cannot select or override it, and read, decision, and audit access use distinct exact scopes.
+- Version 2 auth assigns exclusive organization namespaces, resolves scopes and decision powers
+  from roles, filters action and audit discovery, and can forbid a requester subject from deciding
+  its own action. The store repeats organization, namespace, decision, and requester checks inside
+  the same transaction that changes action state. Version 1 auth is legacy global-trust mode.
 - The API uses bearer headers rather than cookies, emits no permissive cross-origin headers, limits
   decision bodies, and returns no-store responses. It still requires TLS or a trusted local reverse
   proxy whenever traffic leaves loopback.
@@ -206,15 +210,15 @@ AgentBarrier does not:
 - stop an MCP client that can bypass the gateway and call the upstream server directly;
 - provide an identity provider, token rotation service, or TLS termination for the approval API or
   approval dashboard, or MCP gateway;
-- provide centralized dashboard sessions, immediate session revocation, single sign-on,
-  organization roles, or separation-of-duty enforcement;
+- provide centralized dashboard sessions, immediate session revocation, single sign-on, dynamic
+  role administration, or an external identity provider;
 - safely resume interactive MCP `InputRequiredResult` rounds after an execution claim;
 - make an external webhook receiver trustworthy, available, or exactly once;
 - make Slack, a workspace administrator, an allowed member session, or a channel member
   trustworthy, phishing-resistant, or always available;
 - invent a reliable business idempotency key from a JSON-RPC request ID;
 - secure, sign, encrypt, replicate, or retain the runtime database and its backups;
-- authenticate CLI reviewer names or provide multi-user authorization in 0.4;
+- authenticate reviewer names supplied to the trusted local CLI;
 - guarantee exactly-once behavior in an external system that ignores the business idempotency key;
   or
 - prove that an `unknown` effect did not commit without downstream evidence.

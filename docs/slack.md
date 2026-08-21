@@ -53,10 +53,13 @@ Create `slack.json` outside model-writable directories:
 
 ```json
 {
-  "version": "1",
+  "version": "2",
   "workspace_id": "T01234567",
   "app_id": "A01234567",
   "channel_id": "C01234567",
+  "organization_id": "acme",
+  "namespaces": ["billing", "support"],
+  "require_separate_approver": true,
   "bot_token_env": "AGENTBARRIER_SLACK_BOT_TOKEN",
   "signing_secret_env": "AGENTBARRIER_SLACK_SIGNING_SECRET",
   "reviewers": [
@@ -77,6 +80,11 @@ Create `slack.json` outside model-writable directories:
 The IDs must be the exact Slack workspace, app, channel, and member IDs—not display names. The
 `subject` is an operator-controlled audit label. A member may be restricted to approval, rejection,
 or both. Unknown members receive a private denial message and cannot change runtime state.
+Version 2 restricts notifications and decisions to the configured organization namespaces and can
+forbid a Slack reviewer whose subject matches the action requester. The organization, namespaces,
+and subjects should match the approval service's
+[multi-user authorization](multi-user-authorization.md) configuration. Version 1 remains a legacy
+global-store mode without tenant filtering or requester separation.
 
 Load secrets into the named environment variables. AgentBarrier never accepts either secret as a
 command-line argument and excludes both values from configuration representations and status
@@ -188,5 +196,5 @@ message binding.
 
 Slack compromise, workspace-admin compromise, or a stolen allowed member session can authorize the
 decisions granted to that member. AgentBarrier verifies Slack's identity assertion and local
-allowlist; it does not add phishing-resistant authentication, separation of duties, or Slack
+allowlist; it does not add phishing-resistant authentication or Slack
 administration controls.

@@ -63,6 +63,8 @@ RuntimeBarrier(
     policy: RuntimePolicy,
     store: RuntimeStore,
     namespace: str = "default",
+    organization_id: str = "default",
+    requested_by: str | None = None,
 )
 ```
 
@@ -73,6 +75,9 @@ returns a string from the canonical argument mapping.
 Arguments and return values must contain only JSON values: `null`, booleans, finite numbers,
 strings, lists, and string-keyed objects. The wrapper binds defaults before policy evaluation, so
 implicit and explicit default arguments identify the same request.
+`organization_id` and `requested_by` bind tenant and requester identity into non-legacy request
+digests and durable action records. Configure both for production services and pair them with
+version 2 [multi-user authorization](multi-user-authorization.md).
 
 The wrapper is the complete-mediation boundary. Every route to the consequential function must go
 through it; retaining an unwrapped route bypasses AgentBarrier.
@@ -127,7 +132,11 @@ Application code normally uses the store through `RuntimeBarrier`. Operational a
 code can use these methods:
 
 - `get_action(action_id)` and `list_actions(status=None)` return immutable snapshots.
-- `decide(action_id, decision, decided_by=..., reason=None)` approves or rejects a pending action.
+- `decide(action_id, decision, decided_by=..., reason=None)` is the trusted local-operator path for
+  approving or rejecting a pending action.
+- `decide_authorized(action_id, decision, authorization=..., reason=None)` repeats organization,
+  namespace, decision-power, and requester/reviewer checks inside the decision transaction. Remote
+  and multi-user services must use this method.
 - `reconcile(action_id, outcome, resolved_by=..., reason=..., result=None)` resolves an `unknown`
   outcome using evidence from the real downstream system.
 - `receipts(action_id=None)` returns ordered audit receipts.

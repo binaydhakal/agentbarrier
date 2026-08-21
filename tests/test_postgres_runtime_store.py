@@ -64,7 +64,7 @@ def test_postgres_store_uses_dedicated_schema_and_rejects_file_backup(
     ) as store:
         assert store.path == "<postgresql>"
         assert store.schema == schema
-        assert store.schema_version == "4"
+        assert store.schema_version == "5"
         with pytest.raises(NotImplementedError, match="pg_dump"):
             store.backup("unused.db")
 
@@ -138,7 +138,7 @@ def test_postgres_store_requires_explicit_schema_creation(
         create_schema=True,
         migrate=True,
     ) as store:
-        assert store.schema_version == "4"
+        assert store.schema_version == "5"
 
 
 def test_postgres_lock_timeout_rolls_back_and_connection_recovers(
@@ -262,12 +262,14 @@ def test_postgres_store_migrates_v1_and_fails_closed_for_legacy_execution(
         migrate=True,
         clock_ns=Clock(),
     ) as store:
-        assert store.schema_version == "4"
+        assert store.schema_version == "5"
         legacy = store.get_action("legacy")
         assert legacy.status is RuntimeStatus.UNKNOWN
         assert legacy.error == "ExecutionLeaseExpired"
         pending = store.get_action("pending")
         assert pending.approval_ttl_ns == 10
+        assert pending.organization_id == "default"
+        assert pending.requested_by is None
         store.set_pause(paused_by="migration-test", reason="verify controls")
         store.configure_limit(
             "migration-limit",
@@ -299,7 +301,7 @@ def test_postgres_cli_reads_dsn_from_environment_and_operates_controls(
 
     assert main(["database", "migrate", *target, "--postgres-create-schema"]) == 0
     migration_output = capsys.readouterr().out
-    assert "schema version 4" in migration_output
+    assert "schema version 5" in migration_output
     assert dsn not in migration_output
 
     assert (

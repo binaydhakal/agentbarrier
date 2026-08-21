@@ -563,6 +563,9 @@ def test_argument_idempotency_key_validates_configuration_and_values() -> None:
         ({"upstream_url": "https://mcp.example.com/mcp#fragment"}, "fragment"),
         ({"upstream_timeout_seconds": 0}, "greater than zero"),
         ({"namespace": ""}, "namespace"),
+        ({"organization_id": ""}, "organization"),
+        ({"organization_id": "acme"}, "requires --requested-by"),
+        ({"requested_by": ""}, "requester"),
         ({"idempotency_argument": ".request_id"}, "non-empty segments"),
     ],
 )

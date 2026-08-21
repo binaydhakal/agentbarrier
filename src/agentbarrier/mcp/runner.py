@@ -47,10 +47,18 @@ class MCPGatewayConfig:
     upstream_timeout_seconds: float | None = None
     upstream_bearer_token_env: str | None = None
     idempotency_argument: str | None = None
+    organization_id: str = "default"
+    requested_by: str | None = None
 
     def __post_init__(self) -> None:
         if not self.namespace.strip():
             raise ValueError("MCP gateway namespace must not be empty")
+        if not self.organization_id.strip():
+            raise ValueError("MCP gateway organization must not be empty")
+        if self.requested_by is not None and not self.requested_by.strip():
+            raise ValueError("MCP gateway requester must not be empty when provided")
+        if self.organization_id != "default" and self.requested_by is None:
+            raise ValueError("an organization-scoped MCP gateway requires --requested-by")
         databases = int(self.database_path is not None) + int(self.postgres_dsn_env is not None)
         if databases != 1:
             raise ValueError("configure exactly one MCP runtime database backend")
@@ -168,6 +176,8 @@ def _build_gateway(config: MCPGatewayConfig, store: RuntimeStore) -> MCPGateway:
         policy=policy,
         store=store,
         namespace=config.namespace,
+        organization_id=config.organization_id,
+        requested_by=config.requested_by,
     )
     client_factory = _client_factory(config)
     resolver = (

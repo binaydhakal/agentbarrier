@@ -808,7 +808,7 @@ def test_store_writes_consistent_non_overwriting_backup(tmp_path: Path) -> None:
     with SQLiteRuntimeStore(path, clock_ns=clock) as store:
         request = make_request(clock)
         store.submit(request, approval())
-        assert store.schema_version == "4"
+        assert store.schema_version == "5"
         assert store.backup(backup_path) == backup_path
 
     assert backup_path.stat().st_mode & 0o777 == 0o600
@@ -888,7 +888,7 @@ def test_store_migrates_v3_database_to_durable_controls(tmp_path: Path) -> None:
     connection.close()
 
     with SQLiteRuntimeStore(path) as store:
-        assert store.schema_version == "4"
+        assert store.schema_version == "5"
         store.set_pause(paused_by="operator", reason="migration check")
         store.configure_limit(
             "migration-limit",
@@ -967,8 +967,10 @@ def test_store_migrates_v1_and_fails_closed_for_legacy_execution(tmp_path: Path)
         assert action.error == "ExecutionLeaseExpired"
         pending = store.get_action("pending")
         assert pending.approval_ttl_ns == 10
+        assert pending.organization_id == "default"
+        assert pending.requested_by is None
         with sqlite3.connect(path) as migrated:
             metadata = migrated.execute(
                 "SELECT value FROM runtime_metadata WHERE key = 'schema_version'"
             ).fetchone()
-        assert metadata == ("4",)
+        assert metadata == ("5",)

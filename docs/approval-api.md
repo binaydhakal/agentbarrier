@@ -1,7 +1,7 @@
 # Approval HTTP API
 
-> The approval API is under development for AgentBarrier 0.5.0. Bind it to loopback or a trusted
-> private ingress until the complete deployment and authorization audit is finished.
+> The approval API is available on the main branch. Bind it to loopback or a trusted private
+> ingress until the complete 1.0 deployment audit is finished.
 
 The API lets an operator or internal service inspect pending actions and record
 approval decisions without direct shell access to the runtime database. Reviewer identity comes
@@ -39,32 +39,53 @@ agentbarrier auth hash-token --token-env AGENTBARRIER_REVIEWER_TOKEN
 The command prints the SHA-256 value and never prints the token. An unsalted SHA-256 value is safe
 only for a high-entropy random token; a human password can be guessed offline.
 
-## Configure identities and scopes
+## Configure organizations, roles, and identities
 
-Create `approval-auth.json` outside model-writable directories:
+Create `approval-auth.json` outside model-writable directories. Version 2 is recommended for every
+shared deployment:
 
 ```json
 {
-  "version": "1",
+  "version": "2",
+  "organizations": [
+    {
+      "id": "acme",
+      "namespaces": ["billing", "support"],
+      "require_separate_approver": true
+    }
+  ],
+  "roles": [
+    {
+      "id": "reviewer",
+      "scopes": ["actions:read", "actions:decide", "audit:read"],
+      "decisions": ["approve", "reject"]
+    },
+    {
+      "id": "auditor",
+      "scopes": ["audit:read"],
+      "decisions": []
+    },
+    {
+      "id": "agent-runtime",
+      "scopes": ["mcp:call"],
+      "decisions": []
+    }
+  ],
   "tokens": [
     {
-      "subject": "reviewer@example.com",
-      "token_sha256": "REPLACE_WITH_64_HEXADECIMAL_CHARACTERS",
-      "scopes": ["actions:read", "actions:decide", "audit:read"]
-    },
-    {
-      "subject": "audit-exporter",
-      "token_sha256": "REPLACE_WITH_ANOTHER_64_CHARACTER_VALUE",
-      "scopes": ["audit:read"]
-    },
-    {
-      "subject": "mcp-agent",
-      "token_sha256": "REPLACE_WITH_A_THIRD_64_CHARACTER_VALUE",
-      "scopes": ["mcp:call"]
+      "subject": "alice",
+      "kind": "user",
+      "organization": "acme",
+      "roles": ["reviewer"],
+      "token_sha256": "REPLACE_WITH_64_HEXADECIMAL_CHARACTERS"
     }
   ]
 }
 ```
+
+The [multi-user authorization guide](multi-user-authorization.md) also explains how to label
+runtime actions with `organization_id` and `requested_by`. The older version 1 token format remains
+accepted for migration, but it has global visibility and no separation-of-duty checks.
 
 The file is strict: unknown fields, duplicate token digests, duplicate scopes, invalid subjects,
 and unknown scopes are rejected at startup.
@@ -79,6 +100,8 @@ and unknown scopes are rejected at startup.
 A decision records the credential's `subject` as `decided_by`. There is deliberately no
 `decided_by` request field. The approval API and MCP gateway may share this strict auth-file
 format, but use separate least-privilege tokens for agents, reviewers, and audit exporters.
+Version 2 action lists and audit results are limited to the token's organization namespaces;
+cross-organization identifiers appear not found.
 
 ## Run on loopback
 
@@ -158,9 +181,9 @@ fields.
 6. Rate-limit authentication failures and decision endpoints at the reverse proxy.
 7. Alert on unknown outcomes, conflicting decisions, and an invalid receipt chain.
 
-The static-token service is a secure single-node step, not the final multi-user identity system.
-Organizations, role management, separation-of-duty policy, and external identity-provider support
-remain 1.0 deliverables.
+The static auth file now provides durable organizations, reusable roles, user and service
+identities, per-decision permissions, and requester/reviewer separation. It is not an external
+identity provider, token lifecycle service, SSO system, or centralized revocation service.
 
 The API runner also accepts `--postgres-dsn-env NAME` and `--postgres-schema NAME` instead of
 `--db`, allowing multiple API and execution processes to share one migrated runtime store. Follow

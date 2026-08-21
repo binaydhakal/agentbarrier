@@ -217,7 +217,7 @@ class PostgresRuntimeStore(_SQLRuntimeStore):
                 previous_version = _SCHEMA_VERSION
             else:
                 previous_version = str(row["value"])
-            if previous_version not in {"1", "2", "3", _SCHEMA_VERSION}:
+            if previous_version not in {"1", "2", "3", "4", _SCHEMA_VERSION}:
                 raise RuntimeStoreError(
                     f"unsupported PostgreSQL runtime schema version {previous_version!r}; "
                     f"expected {_SCHEMA_VERSION!r}"
@@ -239,6 +239,8 @@ class PostgresRuntimeStore(_SQLRuntimeStore):
                 """
                 CREATE TABLE IF NOT EXISTS runtime_actions (
                     action_id TEXT PRIMARY KEY,
+                    organization_id TEXT NOT NULL DEFAULT 'default',
+                    requested_by TEXT,
                     namespace TEXT NOT NULL,
                     tool_name TEXT NOT NULL,
                     arguments_json TEXT NOT NULL,
@@ -261,6 +263,14 @@ class PostgresRuntimeStore(_SQLRuntimeStore):
                 )
                 """
             )
+            if previous_version != _SCHEMA_VERSION:
+                self._connection.execute(
+                    "ALTER TABLE runtime_actions "
+                    "ADD COLUMN IF NOT EXISTS organization_id TEXT NOT NULL DEFAULT 'default'"
+                )
+                self._connection.execute(
+                    "ALTER TABLE runtime_actions ADD COLUMN IF NOT EXISTS requested_by TEXT"
+                )
             if previous_version in {"1", "2"}:
                 self._connection.execute(
                     "ALTER TABLE runtime_actions "

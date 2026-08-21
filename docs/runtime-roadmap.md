@@ -96,6 +96,9 @@ cross-process transaction locking, SQLite contract parity, service integration, 
 lifecycle audit; and signed Slack notifications with exact message/request binding, configured
 member permissions, durable retries, interaction replay protection, and a clean-wheel approval
 audit. Broader stable deployment work remains for 1.0.
+It also contains organization-scoped users and services, reusable roles, exact approve/reject
+permissions, API and dashboard data isolation, requester identity binding, and transaction-boundary
+separation-of-duty enforcement with legacy migration compatibility.
 
 ## 1.0.0 — stable production contract
 

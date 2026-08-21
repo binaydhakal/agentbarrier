@@ -5,6 +5,7 @@ from agentbarrier.runtime.factory import open_runtime_store
 from agentbarrier.runtime.models import (
     ClaimOutcome,
     ConditionOperator,
+    DecisionAuthorization,
     PolicyDecision,
     PolicyEffect,
     RuntimeAction,
@@ -28,6 +29,7 @@ __all__ = [
     "ArgumentCondition",
     "ClaimOutcome",
     "ConditionOperator",
+    "DecisionAuthorization",
     "IdempotencySelector",
     "PolicyDecision",
     "PolicyEffect",

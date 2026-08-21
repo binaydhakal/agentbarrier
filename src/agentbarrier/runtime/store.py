@@ -20,6 +20,7 @@ from agentbarrier.errors import (
     ActionLimitExceeded,
     ActionLimitValueError,
     ActionOutcomeUnknown,
+    ApprovalAuthorizationError,
     ApprovalExpired,
     ApprovalRejected,
     ApprovalRequired,
@@ -30,6 +31,7 @@ from agentbarrier.errors import (
 from agentbarrier.models import Decision, JsonValue
 from agentbarrier.runtime.models import (
     ClaimOutcome,
+    DecisionAuthorization,
     ExecutionClaim,
     PolicyDecision,
     PolicyEffect,
@@ -48,7 +50,7 @@ from agentbarrier.runtime.models import (
     detached_json_object,
 )
 
-_SCHEMA_VERSION = "4"
+_SCHEMA_VERSION = "5"
 _GLOBAL_SCOPE = ""
 _MAX_SQL_INTEGER = 9_223_372_036_854_775_807
 
@@ -148,7 +150,7 @@ class _SQLRuntimeStore:
                 previous_version = _SCHEMA_VERSION
             else:
                 previous_version = str(row["value"])
-            if previous_version not in {"1", "2", "3", _SCHEMA_VERSION}:
+            if previous_version not in {"1", "2", "3", "4", _SCHEMA_VERSION}:
                 raise RuntimeError(
                     f"unsupported runtime schema version {previous_version!r}; "
                     f"expected {_SCHEMA_VERSION!r}"
@@ -157,6 +159,8 @@ class _SQLRuntimeStore:
                 """
                 CREATE TABLE IF NOT EXISTS runtime_actions (
                     action_id TEXT PRIMARY KEY,
+                    organization_id TEXT NOT NULL DEFAULT 'default',
+                    requested_by TEXT,
                     namespace TEXT NOT NULL,
                     tool_name TEXT NOT NULL,
                     arguments_json TEXT NOT NULL,
@@ -179,13 +183,22 @@ class _SQLRuntimeStore:
                 )
                 """
             )
-            if previous_version in {"1", "2"}:
+            if previous_version != _SCHEMA_VERSION:
                 columns = {
                     str(item["name"])
                     for item in self._connection.execute(
                         "PRAGMA table_info(runtime_actions)"
                     ).fetchall()
                 }
+                if "organization_id" not in columns:
+                    self._connection.execute(
+                        "ALTER TABLE runtime_actions "
+                        "ADD COLUMN organization_id TEXT NOT NULL DEFAULT 'default'"
+                    )
+                if "requested_by" not in columns:
+                    self._connection.execute(
+                        "ALTER TABLE runtime_actions ADD COLUMN requested_by TEXT"
+                    )
                 if previous_version == "1" and "execution_lease_expires_at_ns" not in columns:
                     self._connection.execute(
                         "ALTER TABLE runtime_actions "
@@ -385,13 +398,16 @@ class _SQLRuntimeStore:
             self._connection.execute(
                 """
                 INSERT INTO runtime_actions (
-                    action_id, namespace, tool_name, arguments_json, idempotency_key,
+                    action_id, organization_id, requested_by, namespace, tool_name,
+                    arguments_json, idempotency_key,
                     request_digest, policy_version, policy_rule, policy_effect, status,
                     created_at_ns, updated_at_ns, expires_at_ns, approval_ttl_ns, decided_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     request.action_id,
+                    request.organization_id,
+                    request.requested_by,
                     request.namespace,
                     request.tool_name,
                     arguments_json,
@@ -435,40 +451,103 @@ class _SQLRuntimeStore:
 
         if not decided_by.strip():
             raise ValueError("decided_by must not be empty")
+        if not isinstance(decision, Decision):
+            raise TypeError("decision must be an AgentBarrier Decision")
+        now = self._clock_ns()
+        with self._transaction():
+            row = self._refresh_state(self._require_row(action_id), now=now)
+            return self._decide_locked(
+                self._row_to_action(row),
+                decision,
+                decided_by=decided_by,
+                reason=reason,
+                now=now,
+            )
+
+    def decide_authorized(
+        self,
+        action_id: str,
+        decision: Decision,
+        *,
+        authorization: DecisionAuthorization,
+        reason: str | None = None,
+    ) -> RuntimeAction:
+        """Decide only after enforcing tenant, namespace, role, and self-review constraints."""
+
+        if not isinstance(decision, Decision):
+            raise TypeError("decision must be an AgentBarrier Decision")
         now = self._clock_ns()
         with self._transaction():
             row = self._refresh_state(self._require_row(action_id), now=now)
             action = self._row_to_action(row)
-            target = (
-                RuntimeStatus.APPROVED if decision is Decision.APPROVE else RuntimeStatus.REJECTED
-            )
-            if action.status is target:
-                return action
-            if action.status is RuntimeStatus.EXPIRED:
-                raise ApprovalExpired(action)
-            if action.status is not RuntimeStatus.PENDING:
-                raise InvalidActionState(
-                    f"action {action_id!r} cannot be {decision.value}d from {action.status.value}"
+            if action.organization_id != authorization.organization_id:
+                raise ApprovalAuthorizationError(
+                    "organization_mismatch",
+                    "the reviewer cannot access this organization's action",
                 )
-            self._connection.execute(
-                """
-                UPDATE runtime_actions
-                SET status = ?, updated_at_ns = ?, decided_by = ?, decision_reason = ?
-                WHERE action_id = ?
-                """,
-                (target.value, now, decided_by, reason, action_id),
+            if action.namespace not in authorization.namespaces:
+                raise ApprovalAuthorizationError(
+                    "namespace_forbidden",
+                    "the reviewer cannot access this action namespace",
+                )
+            if decision not in authorization.decisions:
+                raise ApprovalAuthorizationError(
+                    "decision_forbidden",
+                    "the reviewer is not allowed to make this decision",
+                )
+            if (
+                authorization.require_separate_approver
+                and action.requested_by is not None
+                and action.requested_by == (authorization.reviewer_subject or authorization.actor)
+            ):
+                raise ApprovalAuthorizationError(
+                    "separation_of_duties",
+                    "the requester cannot approve or reject their own action",
+                )
+            return self._decide_locked(
+                action,
+                decision,
+                decided_by=authorization.actor,
+                reason=reason,
+                now=now,
             )
-            self._append_receipt(
-                action_id=action_id,
-                event=(
-                    RuntimeEvent.APPROVED if decision is Decision.APPROVE else RuntimeEvent.REJECTED
-                ),
-                timestamp_ns=now,
-                request_digest=action.request_digest,
-                actor=decided_by,
-                detail=reason,
+
+    def _decide_locked(
+        self,
+        action: RuntimeAction,
+        decision: Decision,
+        *,
+        decided_by: str,
+        reason: str | None,
+        now: int,
+    ) -> RuntimeAction:
+        target = RuntimeStatus.APPROVED if decision is Decision.APPROVE else RuntimeStatus.REJECTED
+        if action.status is target:
+            return action
+        if action.status is RuntimeStatus.EXPIRED:
+            raise ApprovalExpired(action)
+        if action.status is not RuntimeStatus.PENDING:
+            raise InvalidActionState(
+                f"action {action.action_id!r} cannot be {decision.value}d "
+                f"from {action.status.value}"
             )
-            return self._row_to_action(self._require_row(action_id))
+        self._connection.execute(
+            """
+            UPDATE runtime_actions
+            SET status = ?, updated_at_ns = ?, decided_by = ?, decision_reason = ?
+            WHERE action_id = ?
+            """,
+            (target.value, now, decided_by, reason, action.action_id),
+        )
+        self._append_receipt(
+            action_id=action.action_id,
+            event=RuntimeEvent.APPROVED if decision is Decision.APPROVE else RuntimeEvent.REJECTED,
+            timestamp_ns=now,
+            request_digest=action.request_digest,
+            actor=decided_by,
+            detail=reason,
+        )
+        return self._row_to_action(self._require_row(action.action_id))
 
     def set_pause(
         self,
@@ -1538,6 +1617,8 @@ class _SQLRuntimeStore:
         result_json = row["result_json"]
         return RuntimeAction(
             action_id=str(row["action_id"]),
+            organization_id=str(row["organization_id"]),
+            requested_by=(str(row["requested_by"]) if row["requested_by"] is not None else None),
             namespace=str(row["namespace"]),
             tool_name=str(row["tool_name"]),
             arguments=detached_json_object(str(row["arguments_json"])),

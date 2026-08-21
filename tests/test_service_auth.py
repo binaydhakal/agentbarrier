@@ -79,7 +79,7 @@ def test_static_bearer_auth_rejects_malformed_or_unknown_tokens(
     ("document", "error", "message"),
     [
         ([], TypeError, "JSON object"),
-        ({"version": "2", "tokens": []}, ValueError, "version"),
+        ({"version": "3", "tokens": []}, ValueError, "version"),
         ({"version": "1", "tokens": "bad"}, TypeError, "list"),
         ({"version": "1", "tokens": []}, ValueError, "at least one"),
         ({"version": "1", "tokens": ["bad"]}, TypeError, "object"),

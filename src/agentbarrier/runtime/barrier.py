@@ -38,13 +38,21 @@ class RuntimeBarrier:
         policy: RuntimePolicy,
         store: RuntimeStore,
         namespace: str = "default",
+        organization_id: str = "default",
+        requested_by: str | None = None,
         clock_ns: Callable[[], int] = time.time_ns,
     ) -> None:
         if not namespace.strip():
             raise ValueError("namespace must not be empty")
+        if not organization_id.strip():
+            raise ValueError("organization_id must not be empty")
+        if requested_by is not None and not requested_by.strip():
+            raise ValueError("requested_by must not be empty when provided")
         self.policy = policy
         self.store = store
         self.namespace = namespace
+        self.organization_id = organization_id
+        self.requested_by = requested_by
         self._clock_ns = clock_ns
 
     def protect(
@@ -208,6 +216,8 @@ class RuntimeBarrier:
             idempotency_key=idempotency_key,
             policy_version=self.policy.version,
             created_at_ns=self._clock_ns(),
+            organization_id=self.organization_id,
+            requested_by=self.requested_by,
         )
         decision = self.policy.evaluate(tool_name, request.arguments)
         return request, self.store.submit(request, decision)

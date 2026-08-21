@@ -95,6 +95,10 @@ def test_mcp_stdio_cli_builds_gateway_configuration(
                 str(database),
                 "--namespace",
                 "support-gateway",
+                "--organization",
+                "acme",
+                "--requested-by",
+                "support-agent",
                 "--upstream-command",
                 "python",
                 "--upstream-arg",
@@ -110,6 +114,8 @@ def test_mcp_stdio_cli_builds_gateway_configuration(
             policy_path=policy,
             database_path=database,
             namespace="support-gateway",
+            organization_id="acme",
+            requested_by="support-agent",
             upstream_command="python",
             upstream_args=("server.py",),
             idempotency_argument="request.id",
@@ -731,11 +737,11 @@ def test_runtime_database_cli_reports_migrates_and_backs_up(
         "limits": 0,
         "receipt_chain_valid": True,
         "receipts": 1,
-        "schema_version": "4",
+        "schema_version": "5",
     }
 
     assert main(["database", "migrate", "--db", str(path)]) == 0
-    assert "schema version 4" in capsys.readouterr().out
+    assert "schema version 5" in capsys.readouterr().out
 
     backup = tmp_path / "runtime-backup.db"
     assert main(["database", "backup", "--db", str(path), "--output", str(backup)]) == 0

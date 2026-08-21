@@ -124,6 +124,14 @@ class InvalidActionState(RuntimeBarrierError):
     """Raised when a runtime action cannot perform the requested state transition."""
 
 
+class ApprovalAuthorizationError(RuntimeBarrierError):
+    """Raised when an authenticated reviewer may not decide an exact action."""
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+
+
 class EmergencyPauseActive(RuntimeActionError):
     """Raised when an operator pause blocks an action at the execution boundary."""
 

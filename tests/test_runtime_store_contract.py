@@ -371,4 +371,4 @@ def test_runtime_store_factory_requires_one_secret_safe_backend(
         pass
 
     with open_runtime_store(database_path=tmp_path / "runtime.db") as store:
-        assert store.schema_version == "4"
+        assert store.schema_version == "5"

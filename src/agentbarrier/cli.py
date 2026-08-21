@@ -478,6 +478,15 @@ def _add_mcp_gateway_options(parser: argparse.ArgumentParser) -> None:
         default="mcp-gateway",
         help="runtime action namespace (default: mcp-gateway)",
     )
+    parser.add_argument(
+        "--organization",
+        default="default",
+        help="organization recorded on every action (default: default)",
+    )
+    parser.add_argument(
+        "--requested-by",
+        help="service identity requesting actions; required with a non-default organization",
+    )
     upstream = parser.add_mutually_exclusive_group(required=True)
     upstream.add_argument("--upstream-url", help="upstream Streamable HTTP MCP endpoint")
     upstream.add_argument("--upstream-command", help="upstream stdio MCP executable")
@@ -857,6 +866,8 @@ def _run_mcp_gateway(arguments: argparse.Namespace) -> int:
         policy_path=Path(cast(str, arguments.policy)),
         database_path=(Path(cast(str, arguments.db)) if arguments.db is not None else None),
         namespace=cast(str, arguments.namespace),
+        organization_id=cast(str, arguments.organization),
+        requested_by=cast(str | None, arguments.requested_by),
         postgres_dsn_env=cast(str | None, arguments.postgres_dsn_env),
         postgres_schema=cast(str, arguments.postgres_schema),
         upstream_url=cast(str | None, arguments.upstream_url),

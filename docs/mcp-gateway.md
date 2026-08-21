@@ -90,10 +90,10 @@ When no argument path is configured, the client must add this string to `params.
 }
 ```
 
-Reusing the key with a different namespace, tool, arguments, or policy version is blocked before
-the upstream server is called. The downstream service should enforce the same business key as a
-second layer because no proxy can provide exactly-once behavior after a network failure unless the
-effect destination can reconcile that identity.
+Reusing the key with a different organization, requester, namespace, tool, arguments, or policy
+version is blocked before the upstream server is called. The downstream service should enforce the
+same business key as a second layer because no proxy can provide exactly-once behavior after a
+network failure unless the effect destination can reconcile that identity.
 
 ## Proxy a stdio server
 
@@ -104,6 +104,8 @@ agentbarrier mcp stdio \
   --policy policy.json \
   --db agentbarrier.db \
   --namespace support-agent \
+  --organization acme \
+  --requested-by support-agent \
   --upstream-command python \
   --upstream-arg server.py \
   --idempotency-argument request_id
@@ -132,6 +134,8 @@ agentbarrier mcp http \
   --policy policy.json \
   --db agentbarrier.db \
   --namespace support-agent \
+  --organization acme \
+  --requested-by support-agent \
   --upstream-url https://mcp.example.com/mcp \
   --upstream-bearer-token-env MCP_UPSTREAM_TOKEN \
   --auth-config approval-auth.json \
@@ -145,6 +149,11 @@ The safe default listens only on `127.0.0.1` and limits request bodies to 1 MiB.
 host is rejected unless `--auth-config` is present. Every HTTP request must then carry a valid
 `Authorization: Bearer ...` credential with `mcp:call`; missing, invalid, and insufficient-scope
 credentials receive 401 or 403 before MCP processing.
+
+`--organization` and `--requested-by` bind a trusted service identity to every action created by
+this gateway. A non-default organization requires an explicit requester. Use a version 2 auth file
+for isolated review and requester/reviewer separation; see
+[multi-user authorization](multi-user-authorization.md).
 
 `--upstream-bearer-token-env` reads an upstream HTTP token from the named environment variable at
 connection time. The value is validated, kept out of configuration files and command arguments,

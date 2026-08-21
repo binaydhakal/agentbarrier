@@ -11,7 +11,7 @@ from hashlib import sha256
 from types import MappingProxyType
 from typing import cast
 
-from agentbarrier.models import JsonValue
+from agentbarrier.models import Decision, JsonValue
 
 
 class PolicyEffect(str, Enum):
@@ -141,6 +141,8 @@ class RuntimeRequest:
     idempotency_key: str
     policy_version: str
     created_at_ns: int
+    organization_id: str
+    requested_by: str | None
     _arguments_json: str = field(repr=False)
 
     def __init__(
@@ -153,6 +155,8 @@ class RuntimeRequest:
         idempotency_key: str,
         policy_version: str,
         created_at_ns: int,
+        organization_id: str = "default",
+        requested_by: str | None = None,
     ) -> None:
         for name, value in (
             ("action_id", action_id),
@@ -160,11 +164,15 @@ class RuntimeRequest:
             ("tool_name", tool_name),
             ("idempotency_key", idempotency_key),
             ("policy_version", policy_version),
+            ("organization_id", organization_id),
         ):
             if not value.strip():
                 raise ValueError(f"{name} must not be empty")
         if created_at_ns < 0:
             raise ValueError("created_at_ns must not be negative")
+        _validate_runtime_identity(organization_id, name="organization_id")
+        if requested_by is not None:
+            _validate_runtime_identity(requested_by, name="requested_by")
         encoded = canonical_json(dict(arguments), path="arguments")
         object.__setattr__(self, "action_id", action_id)
         object.__setattr__(self, "namespace", namespace)
@@ -172,6 +180,8 @@ class RuntimeRequest:
         object.__setattr__(self, "idempotency_key", idempotency_key)
         object.__setattr__(self, "policy_version", policy_version)
         object.__setattr__(self, "created_at_ns", created_at_ns)
+        object.__setattr__(self, "organization_id", organization_id)
+        object.__setattr__(self, "requested_by", requested_by)
         object.__setattr__(self, "_arguments_json", encoded)
 
     @property
@@ -184,14 +194,19 @@ class RuntimeRequest:
     def request_digest(self) -> str:
         """Bind identity, arguments, idempotency, and policy version."""
 
+        identity: dict[str, JsonValue] = {
+            "namespace": self.namespace,
+            "tool_name": self.tool_name,
+            "arguments": json.loads(self._arguments_json),
+            "idempotency_key": self.idempotency_key,
+            "policy_version": self.policy_version,
+        }
+        # Preserve exact digests for stores created before organizations were introduced.
+        if self.organization_id != "default" or self.requested_by is not None:
+            identity["organization_id"] = self.organization_id
+            identity["requested_by"] = self.requested_by
         payload = json.dumps(
-            {
-                "namespace": self.namespace,
-                "tool_name": self.tool_name,
-                "arguments": json.loads(self._arguments_json),
-                "idempotency_key": self.idempotency_key,
-                "policy_version": self.policy_version,
-            },
+            identity,
             sort_keys=True,
             separators=(",", ":"),
             allow_nan=False,
@@ -250,6 +265,39 @@ class RuntimeAction:
     error: str | None = None
     decided_by: str | None = None
     decision_reason: str | None = None
+    organization_id: str = "default"
+    requested_by: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class DecisionAuthorization:
+    """Exact reviewer constraints enforced inside the storage transaction."""
+
+    actor: str
+    organization_id: str
+    namespaces: frozenset[str]
+    decisions: frozenset[Decision]
+    require_separate_approver: bool = False
+    reviewer_subject: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_runtime_identity(self.actor, name="actor", maximum=512)
+        _validate_runtime_identity(self.organization_id, name="organization_id")
+        if not self.namespaces or any(not item.strip() for item in self.namespaces):
+            raise ValueError("namespaces must contain at least one non-empty namespace")
+        if not self.decisions:
+            raise ValueError("decisions must contain at least one decision")
+        if any(not isinstance(item, Decision) for item in self.decisions):
+            raise TypeError("decisions must contain only Decision values")
+        if self.reviewer_subject is not None:
+            _validate_runtime_identity(self.reviewer_subject, name="reviewer_subject")
+
+
+def _validate_runtime_identity(value: str, *, name: str, maximum: int = 128) -> None:
+    if not value.strip() or len(value) > maximum:
+        raise ValueError(f"{name} must contain 1 to {maximum} non-whitespace characters")
+    if any(ord(character) < 32 or ord(character) == 127 for character in value):
+        raise ValueError(f"{name} must not contain control characters")
 
 
 @dataclass(frozen=True, slots=True)

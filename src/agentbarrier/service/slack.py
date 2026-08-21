@@ -28,9 +28,9 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
-from agentbarrier.errors import InvalidActionState, RuntimeActionError
+from agentbarrier.errors import ApprovalAuthorizationError, InvalidActionState, RuntimeActionError
 from agentbarrier.models import Decision
-from agentbarrier.runtime import RuntimeAction, RuntimeStatus, RuntimeStore
+from agentbarrier.runtime import DecisionAuthorization, RuntimeAction, RuntimeStatus, RuntimeStore
 from agentbarrier.runtime.models import canonical_json
 from agentbarrier.service.api import SecurityHeadersMiddleware
 
@@ -86,6 +86,9 @@ class SlackConfig:
     max_attempts: int = 5
     initial_backoff_seconds: float = 1
     max_backoff_seconds: float = 60
+    organization_id: str | None = None
+    namespaces: frozenset[str] = frozenset()
+    require_separate_approver: bool = False
 
     def __post_init__(self) -> None:
         if _WORKSPACE_ID_PATTERN.fullmatch(self.workspace_id) is None:
@@ -113,6 +116,25 @@ class SlackConfig:
         identifiers = [reviewer.user_id for reviewer in self.reviewers]
         if len(identifiers) != len(set(identifiers)):
             raise ValueError("Slack reviewer user IDs must be unique")
+        if self.organization_id is None:
+            if self.namespaces or self.require_separate_approver:
+                raise ValueError(
+                    "legacy Slack config cannot carry organization authorization settings"
+                )
+        else:
+            if not self.organization_id.strip() or len(self.organization_id) > 128:
+                raise ValueError("Slack organization_id must contain 1 to 128 characters")
+            if any(
+                ord(character) < 32 or ord(character) == 127 for character in self.organization_id
+            ):
+                raise ValueError("Slack organization_id must not contain control characters")
+            if not self.namespaces or any(
+                not item.strip()
+                or len(item) > 128
+                or any(ord(character) < 32 or ord(character) == 127 for character in item)
+                for item in self.namespaces
+            ):
+                raise ValueError("Slack namespaces must contain at least one non-empty namespace")
         if (
             not math.isfinite(self.timeout_seconds)
             or self.timeout_seconds <= 0
@@ -165,11 +187,15 @@ class SlackConfig:
                 "max_attempts",
                 "initial_backoff_seconds",
                 "max_backoff_seconds",
+                "organization_id",
+                "namespaces",
+                "require_separate_approver",
             },
             label="Slack config",
         )
-        if data.get("version") != "1":
-            raise ValueError("Slack config version must be '1'")
+        version = data.get("version")
+        if version not in {"1", "2"}:
+            raise ValueError("Slack config version must be '1' or '2'")
         required = (
             "workspace_id",
             "app_id",
@@ -192,6 +218,30 @@ class SlackConfig:
         attempts = data.get("max_attempts", 5)
         if not isinstance(attempts, int) or isinstance(attempts, bool):
             raise TypeError("Slack max_attempts must be an integer")
+        organization_id: str | None = None
+        namespaces: frozenset[str] = frozenset()
+        separation = False
+        if version == "2":
+            raw_organization = data.get("organization_id")
+            raw_namespaces = data.get("namespaces")
+            raw_separation = data.get("require_separate_approver", False)
+            if not isinstance(raw_organization, str):
+                raise TypeError("Slack organization_id must be a string")
+            if not isinstance(raw_namespaces, Sequence) or isinstance(raw_namespaces, (str, bytes)):
+                raise TypeError("Slack namespaces must be a list")
+            if any(not isinstance(item, str) for item in raw_namespaces):
+                raise TypeError("every Slack namespace must be a string")
+            namespaces = frozenset(cast(Sequence[str], raw_namespaces))
+            if len(namespaces) != len(raw_namespaces):
+                raise ValueError("Slack namespaces must not contain duplicates")
+            if not isinstance(raw_separation, bool):
+                raise TypeError("Slack require_separate_approver must be a boolean")
+            organization_id = raw_organization
+            separation = raw_separation
+        elif any(
+            name in data for name in ("organization_id", "namespaces", "require_separate_approver")
+        ):
+            raise ValueError("Slack organization authorization requires config version '2'")
         return cls(
             workspace_id=cast(str, data["workspace_id"]),
             app_id=cast(str, data["app_id"]),
@@ -201,6 +251,9 @@ class SlackConfig:
             signing_secret=env[signing_secret_env],
             signing_secret_env=signing_secret_env,
             reviewers=reviewers,
+            organization_id=organization_id,
+            namespaces=namespaces,
+            require_separate_approver=separation,
             timeout_seconds=_number(data.get("timeout_seconds", 2), name="timeout_seconds"),
             max_attempts=attempts,
             initial_backoff_seconds=_number(
@@ -238,6 +291,13 @@ class SlackConfig:
             if hmac.compare_digest(reviewer.user_id, user_id):
                 return reviewer
         return None
+
+    def can_access_action(self, action: RuntimeAction) -> bool:
+        """Return whether this Slack deployment is authorized for one action."""
+
+        return self.organization_id is None or (
+            action.organization_id == self.organization_id and action.namespace in self.namespaces
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -751,6 +811,8 @@ class SlackWorker:
     def sync_pending(self) -> int:
         inserted = 0
         for action in self.runtime_store.list_actions(status=RuntimeStatus.PENDING):
+            if not self.config.can_access_action(action):
+                continue
             inserted += int(
                 self.notification_store.enqueue(action, channel_id=self.config.channel_id)
             )
@@ -1134,13 +1196,62 @@ class SlackInteractionService:
             ) from error
         if not hmac.compare_digest(action.request_digest, parsed.request_digest):
             raise SlackRequestError(409, "binding_changed", "the action binding changed")
+        if not self.config.can_access_action(action):
+            self.notification_store.record_interaction(
+                signature_digest=parsed.signature_digest,
+                action_id=parsed.action_id,
+                request_digest=parsed.request_digest,
+                user_id=parsed.user_id,
+                decision=parsed.decision,
+                outcome="unauthorized",
+            )
+            return Response(
+                status_code=200,
+                background=BackgroundTask(
+                    self._post_ephemeral,
+                    parsed,
+                    "You are not authorized to make this AgentBarrier decision.",
+                ),
+            )
         decided_by = f"slack:{self.config.workspace_id}:{parsed.user_id}:{reviewer.subject}"
         try:
-            decided = self.runtime_store.decide(
-                parsed.action_id,
-                parsed.decision,
-                decided_by=decided_by,
-                reason="Slack interactive decision",
+            if self.config.organization_id is None:
+                decided = self.runtime_store.decide(
+                    parsed.action_id,
+                    parsed.decision,
+                    decided_by=decided_by,
+                    reason="Slack interactive decision",
+                )
+            else:
+                decided = self.runtime_store.decide_authorized(
+                    parsed.action_id,
+                    parsed.decision,
+                    authorization=DecisionAuthorization(
+                        actor=decided_by,
+                        reviewer_subject=reviewer.subject,
+                        organization_id=self.config.organization_id,
+                        namespaces=self.config.namespaces,
+                        decisions=reviewer.decisions,
+                        require_separate_approver=self.config.require_separate_approver,
+                    ),
+                    reason="Slack interactive decision",
+                )
+        except ApprovalAuthorizationError:
+            self.notification_store.record_interaction(
+                signature_digest=parsed.signature_digest,
+                action_id=parsed.action_id,
+                request_digest=parsed.request_digest,
+                user_id=parsed.user_id,
+                decision=parsed.decision,
+                outcome="unauthorized",
+            )
+            return Response(
+                status_code=200,
+                background=BackgroundTask(
+                    self._post_ephemeral,
+                    parsed,
+                    "You are not authorized to make this AgentBarrier decision.",
+                ),
             )
         except (InvalidActionState, RuntimeActionError) as error:
             current = (

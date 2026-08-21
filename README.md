@@ -48,6 +48,9 @@ approval, replay, control, and audit state; see the [PostgreSQL guide](docs/post
 Signed Slack approvals can deliver exact pending actions to a private channel, authorize only
 configured member IDs, reject forged or replayed interactions, and record the Slack identity in the
 runtime receipt; see the [Slack guide](docs/slack.md).
+Organization-scoped roles and requester/reviewer separation are also available on the main branch.
+They isolate API and dashboard views and enforce every decision rule again inside the database
+transaction; see the [multi-user authorization guide](docs/multi-user-authorization.md).
 
 > **Status:** early development. The public adapter contract is usable, but compatibility should
 > be pinned until the first stable release.
@@ -58,6 +61,8 @@ runtime receipt; see the [Slack guide](docs/slack.md).
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/mcp-gateway.md">MCP gateway</a>
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/approval-api.md">Approval API</a>
+  ·
+  <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/multi-user-authorization.md">Multi-user authorization</a>
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/dashboard.md">Dashboard</a>
   ·
@@ -90,8 +95,9 @@ runtime receipt; see the [Slack guide](docs/slack.md).
 - a communications agent sending external email or publishing content; and
 - any MCP client calling a consequential tool hosted by an existing MCP server.
 
-The model can propose the action, but it cannot approve its own request, change the reviewed
-arguments afterward, or cause the same approved operation to execute twice through a retry.
+The model can propose the action but cannot change the reviewed arguments afterward or cause the
+same approved operation to execute twice through a retry. With organization authorization and
+requester/reviewer separation enabled, its service identity also cannot approve its own request.
 
 ## Stop or limit live agent actions
 

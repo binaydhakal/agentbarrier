@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file. The format 
 
 ### Added
 
+- Version 2 multi-user authorization with organizations, exclusive namespace ownership, reusable
+  roles, user and service identities, exact approve/reject powers, tenant-filtered API/dashboard/
+  Slack views, requester identity binding, and transaction-boundary separation-of-duty checks.
+- Organization and requester attribution for Python and MCP runtime barriers, schema version 5
+  migrations for SQLite and PostgreSQL, legacy digest compatibility, and organization-scoped
+  Slack notifications and decisions.
 - Durable emergency pauses with global, namespace, tool, and combined scopes, enforced atomically
   at the final execution claim and recorded in both action and operator-control receipt chains.
 - Fixed-window action and non-negative integer-value limits with atomic cross-process capacity
