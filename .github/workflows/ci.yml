@@ -146,6 +146,9 @@ jobs:
           tests/test_runtime_store_contract.py
           tests/test_postgres_runtime_store.py
           tests/test_runtime_wheel_audit.py
+          --cov=agentbarrier.runtime.postgres
+          --cov-config=.coveragerc-postgres
+          --cov-report=term-missing
       - run: uv build
       - name: Audit installed wheel against PostgreSQL
         run: |

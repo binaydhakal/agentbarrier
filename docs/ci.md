@@ -109,4 +109,5 @@ flow.
 AgentBarrier's own package CI additionally runs the shared runtime-store contract against real
 SQLite and PostgreSQL backends. A clean virtual environment installs the built wheel and proves
 pending, approval, execution, replay, pause, limit, and receipt-chain behavior against PostgreSQL;
-this guards against source-tree-only dependency or packaging mistakes.
+this guards against source-tree-only dependency or packaging mistakes. The core and live
+PostgreSQL jobs each enforce at least 90 percent branch coverage in their respective environments.

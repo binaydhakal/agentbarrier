@@ -81,6 +81,7 @@ def test_postgres_store_uses_dedicated_schema_and_rejects_file_backup(
     ("dsn", "schema", "lock_timeout", "message"),
     [
         ("", "agentbarrier", 30, "DSN"),
+        ("dbname=unused\npassword=secret", "agentbarrier", 30, "control characters"),
         ("dbname=unused", "Invalid-Schema", 30, "schema"),
         ("dbname=unused", "agentbarrier", 0, "lock timeout"),
         ("dbname=unused", "agentbarrier", float("inf"), "lock timeout"),
@@ -195,6 +196,8 @@ def test_postgres_store_rejects_unknown_schema_version(
             )
         )
 
+    with pytest.raises(RuntimeStoreError, match="requires migration"):
+        PostgresRuntimeStore(dsn, schema=schema)
     with pytest.raises(RuntimeStoreError, match="unsupported PostgreSQL"):
         PostgresRuntimeStore(dsn, schema=schema, migrate=True)
 

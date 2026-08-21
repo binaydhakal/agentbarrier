@@ -129,9 +129,12 @@ markers = [
 [tool.coverage.run]
 branch = true
 source = ["agentbarrier"]
-# CrewAI is measured at 90%+ in its isolated dependency job because it cannot coexist with the
-# OpenAI Agents extra in the main coverage environment.
-omit = ["src/agentbarrier/adapters/crewai.py"]
+# CrewAI and PostgreSQL are each measured at 90%+ in their real isolated jobs. CrewAI cannot
+# coexist with the OpenAI Agents extra, and PostgreSQL requires a live database service.
+omit = [
+  "src/agentbarrier/adapters/crewai.py",
+  "src/agentbarrier/runtime/postgres.py",
+]
 
 [tool.coverage.report]
 show_missing = true
