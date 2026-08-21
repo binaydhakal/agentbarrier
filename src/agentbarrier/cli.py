@@ -189,6 +189,18 @@ def build_parser() -> argparse.ArgumentParser:
     mcp_http.add_argument("--host", default="127.0.0.1", help="listen host (default: 127.0.0.1)")
     mcp_http.add_argument("--port", type=int, default=8765, help="listen port (default: 8765)")
     mcp_http.add_argument("--path", default="/mcp", help="MCP endpoint path (default: /mcp)")
+    mcp_http.add_argument(
+        "--auth-config",
+        metavar="PATH",
+        help="scoped bearer-token digest file; required for non-loopback listeners",
+    )
+    mcp_http.add_argument(
+        "--max-request-bytes",
+        type=int,
+        default=1024 * 1024,
+        metavar="BYTES",
+        help="maximum MCP request body size (default: 1048576)",
+    )
     mcp_http.set_defaults(handler=_run_mcp_gateway)
 
     api = commands.add_parser("api", help="run the authenticated approval HTTP API")
@@ -203,7 +215,7 @@ def build_parser() -> argparse.ArgumentParser:
     api.add_argument("--port", type=int, default=8787, help="listen port (default: 8787)")
     api.set_defaults(handler=_run_approval_api)
 
-    auth = commands.add_parser("auth", help="manage approval-service authentication material")
+    auth = commands.add_parser("auth", help="manage AgentBarrier service authentication material")
     auth_commands = auth.add_subparsers(dest="auth_command", required=True)
     hash_token = auth_commands.add_parser(
         "hash-token",
@@ -283,6 +295,11 @@ def _add_mcp_gateway_options(parser: argparse.ArgumentParser) -> None:
         type=float,
         metavar="SECONDS",
         help="optional upstream request timeout",
+    )
+    parser.add_argument(
+        "--upstream-bearer-token-env",
+        metavar="NAME",
+        help="read an upstream HTTP bearer token from this environment variable",
     )
     parser.add_argument(
         "--idempotency-argument",
@@ -533,6 +550,7 @@ def _run_mcp_gateway(arguments: argparse.Namespace) -> int:
         upstream_command=cast(str | None, arguments.upstream_command),
         upstream_args=tuple(cast(list[str], arguments.upstream_arg)),
         upstream_timeout_seconds=cast(float | None, arguments.upstream_timeout),
+        upstream_bearer_token_env=cast(str | None, arguments.upstream_bearer_token_env),
         idempotency_argument=cast(str | None, arguments.idempotency_argument),
     )
     if arguments.mcp_transport == "stdio":
@@ -543,6 +561,8 @@ def _run_mcp_gateway(arguments: argparse.Namespace) -> int:
             host=cast(str, arguments.host),
             port=cast(int, arguments.port),
             path=cast(str, arguments.path),
+            auth_path=cast(str | None, arguments.auth_config),
+            max_request_body_size=cast(int, arguments.max_request_bytes),
         )
     return 0
 

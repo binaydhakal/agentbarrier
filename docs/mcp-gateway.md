@@ -123,21 +123,36 @@ agentbarrier mcp stdio \
 
 ## Serve Streamable HTTP
 
+Create an auth file using the format in the [approval API guide](approval-api.md). Give the agent
+credential only `mcp:call`; do not reuse a reviewer token. The file stores SHA-256 digests of
+high-entropy tokens, never plaintext credentials.
+
 ```bash
 agentbarrier mcp http \
   --policy policy.json \
   --db agentbarrier.db \
   --namespace support-agent \
   --upstream-url https://mcp.example.com/mcp \
+  --upstream-bearer-token-env MCP_UPSTREAM_TOKEN \
+  --auth-config approval-auth.json \
   --host 127.0.0.1 \
   --port 8765 \
-  --path /mcp
+  --path /mcp \
+  --max-request-bytes 1048576
 ```
 
-The safe default listens only on `127.0.0.1`. The development runner does not yet authenticate
-public MCP clients. Do not bind it to a public or shared interface without an authenticating
-reverse proxy, TLS, request-size limits, and network policy. Authenticated service endpoints are a
-separate 0.5.0 release gate.
+The safe default listens only on `127.0.0.1` and limits request bodies to 1 MiB. A non-loopback
+host is rejected unless `--auth-config` is present. Every HTTP request must then carry a valid
+`Authorization: Bearer ...` credential with `mcp:call`; missing, invalid, and insufficient-scope
+credentials receive 401 or 403 before MCP processing.
+
+`--upstream-bearer-token-env` reads an upstream HTTP token from the named environment variable at
+connection time. The value is validated, kept out of configuration files and command arguments,
+and sent only in the Authorization header. Upstream redirects are disabled so a credential cannot
+silently follow a redirect to another host. Remote upstreams must use HTTPS; plaintext HTTP is
+accepted only for loopback development. Embedded URL credentials and URL fragments are rejected.
+Use host allow-listing, rate limiting, and network policy at trusted ingress whenever traffic
+leaves loopback.
 
 ## Approval flow
 
@@ -181,19 +196,27 @@ The first 0.5.0 slice forwards `tools/list` and complete `tools/call` results. I
 schemas, structured content, result metadata, tool errors, progress, cancellation, and current MCP
 version negotiation through the official SDK.
 
-Before the 0.5.0 release, the remaining gates include raw stdio and Streamable HTTP conformance,
-malformed JSON-RPC fixtures, multi-round-trip input-required behavior, upstream authentication
-configuration, the authenticated approval HTTP API, signed webhooks, and clean-wheel end-to-end
-audits.
+Raw stdio runs across a subprocess boundary, and raw Streamable HTTP fixtures cover scoped
+authentication, initialization, discovery, execution, replay, malformed requests, and body-size
+enforcement. Package CI installs the built wheel into a clean environment and proves MCP pending →
+approved → executed → replayed behavior with one upstream effect.
+
+Interactive `InputRequiredResult` tool rounds are not yet a supported execution contract. If an
+upstream tool requests additional sampling, elicitation, or roots input after AgentBarrier has
+claimed execution, the call fails closed as an `unknown` outcome and is not retried automatically.
+Do not expose interactive consequential tools through this release; split input collection from
+the final side-effecting tool or reconcile the unknown action before any retry.
 
 ## Complete-mediation checklist
 
 1. Clients connect only to the gateway, never directly to the upstream server.
 2. Upstream credentials are available only to the gateway service account.
-3. Policy and SQLite files are outside model-writable directories with restrictive permissions.
-4. Every consequential call supplies a real business idempotency key.
-5. Policy defaults to deny and policy changes use a new version.
-6. Operators alert on `unknown`, binding violations, repeated denials, and a broken receipt chain.
-7. The external system supports lookup or reconciliation using the same business key.
+3. Agent, reviewer, and audit identities use separate least-privilege bearer tokens.
+4. Policy, auth, and SQLite files are outside model-writable directories with restrictive
+   permissions.
+5. Every consequential call supplies a real business idempotency key.
+6. Policy defaults to deny and policy changes use a new version.
+7. Operators alert on `unknown`, binding violations, repeated denials, and a broken receipt chain.
+8. The external system supports lookup or reconciliation using the same business key.
 
 See the [runtime threat model](threat-model.md) for the broader trust boundary.

@@ -13,6 +13,7 @@ from mcp.server.lowlevel import Server
 from mcp.types import (
     CallToolRequestParams,
     CallToolResult,
+    InputRequiredResult,
     ListToolsResult,
     PaginatedRequestParams,
     TextContent,
@@ -156,14 +157,19 @@ class MCPGateway:
             return self._request_error(str(error), code="invalid_idempotency_key")
 
         async def forward() -> dict[str, Any]:
-            result = await context.lifespan_context.client.call_tool(
+            result = await context.lifespan_context.client.session.call_tool(
                 params.name,
                 dict(arguments),
                 progress_callback=context.session.report_progress,
                 input_responses=params.input_responses,
                 request_state=params.request_state,
                 meta=params.meta,
+                allow_input_required=True,
             )
+            if isinstance(result, InputRequiredResult):
+                raise RuntimeError(
+                    "interactive upstream MCP tools are not supported after execution is claimed"
+                )
             return result.model_dump(by_alias=True, mode="json", exclude_none=False)
 
         try:

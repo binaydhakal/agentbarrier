@@ -52,6 +52,11 @@ Create `approval-auth.json` outside model-writable directories:
       "subject": "audit-exporter",
       "token_sha256": "REPLACE_WITH_ANOTHER_64_CHARACTER_VALUE",
       "scopes": ["audit:read"]
+    },
+    {
+      "subject": "mcp-agent",
+      "token_sha256": "REPLACE_WITH_A_THIRD_64_CHARACTER_VALUE",
+      "scopes": ["mcp:call"]
     }
   ]
 }
@@ -65,9 +70,11 @@ and unknown scopes are rejected at startup.
 | `actions:read` | List actions and inspect exact action details. |
 | `actions:decide` | Approve or reject a pending action. |
 | `audit:read` | Read integrity-linked runtime receipts and chain status. |
+| `mcp:call` | Connect to and call an authenticated AgentBarrier MCP HTTP gateway. |
 
 A decision records the credential's `subject` as `decided_by`. There is deliberately no
-`decided_by` request field.
+`decided_by` request field. The approval API and MCP gateway may share this strict auth-file
+format, but use separate least-privilege tokens for agents, reviewers, and audit exporters.
 
 ## Run on loopback
 

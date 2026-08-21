@@ -9,7 +9,7 @@
 # AgentBarrier
 
 <p align="center">
-  <strong>Enforce and prove safe approval boundaries for AI-agent actions.</strong>
+  <strong>Make consequential AI-agent actions policy-controlled, approval-bound, and retry-safe.</strong>
 </p>
 
 <p align="center">
@@ -104,13 +104,16 @@ Or expose a local Streamable HTTP gateway in front of a remote MCP endpoint:
 agentbarrier mcp http \
   --policy policy.json \
   --db agentbarrier.db \
-  --upstream-url https://mcp.example.com/mcp
+  --upstream-url https://mcp.example.com/mcp \
+  --upstream-bearer-token-env MCP_UPSTREAM_TOKEN \
+  --auth-config approval-auth.json
 ```
 
-The HTTP listener binds to `127.0.0.1:8765` by default. Each call must supply stable business
-identity through the configured argument path or the `agentbarrier/idempotencyKey` MCP metadata
-field. See the [MCP gateway guide](docs/mcp-gateway.md) for the policy example, approval flow,
-security boundary, and current development limitations.
+The HTTP listener binds to `127.0.0.1:8765` and limits request bodies to 1 MiB by default. A
+non-loopback listener is rejected unless its auth file grants the caller `mcp:call`; TLS and rate
+limiting still belong at trusted ingress. Each call must supply stable business identity through
+the configured argument path or the `agentbarrier/idempotencyKey` MCP metadata field. See the
+[MCP gateway guide](docs/mcp-gateway.md) for setup, approval flow, and the security boundary.
 
 The same runtime database can be reviewed from the development authenticated HTTP service. It uses
 scoped bearer identities, takes the reviewer name from authentication rather than request data, and

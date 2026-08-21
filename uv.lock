@@ -42,6 +42,7 @@ all = [
     { name = "autogen-core" },
     { name = "google-adk" },
     { name = "httpx" },
+    { name = "httpx2" },
     { name = "langgraph", marker = "python_full_version >= '3.11'" },
     { name = "mcp", version = "2.0.0", source = { registry = "https://pypi.org/simple" } },
     { name = "openai-agents" },
@@ -63,6 +64,7 @@ langgraph = [
     { name = "langgraph", marker = "python_full_version >= '3.11' or (extra == 'extra-12-agentbarrier-all' and extra == 'extra-12-agentbarrier-crewai') or (extra == 'extra-12-agentbarrier-crewai' and extra == 'extra-12-agentbarrier-mcp') or (extra == 'extra-12-agentbarrier-crewai' and extra == 'extra-12-agentbarrier-openai')" },
 ]
 mcp = [
+    { name = "httpx2" },
     { name = "mcp", version = "2.0.0", source = { registry = "https://pypi.org/simple" } },
     { name = "uvicorn" },
 ]
@@ -97,6 +99,8 @@ requires-dist = [
     { name = "google-adk", marker = "extra == 'google-adk'", specifier = ">=2.7,<3" },
     { name = "httpx", marker = "extra == 'all'", specifier = ">=0.27,<1" },
     { name = "httpx", marker = "extra == 'service'", specifier = ">=0.27,<1" },
+    { name = "httpx2", marker = "extra == 'all'", specifier = ">=2.12,<3" },
+    { name = "httpx2", marker = "extra == 'mcp'", specifier = ">=2.12,<3" },
     { name = "jsonschema", marker = "extra == 'test'", specifier = ">=4.26" },
     { name = "langgraph", marker = "python_full_version >= '3.11' and extra == 'all'", specifier = ">=1.2,<2" },
     { name = "langgraph", marker = "python_full_version >= '3.11' and extra == 'langgraph'", specifier = ">=1.2,<2" },

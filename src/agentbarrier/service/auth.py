@@ -1,4 +1,4 @@
-"""Static, scoped bearer authentication for the approval service."""
+"""Static, scoped bearer authentication for AgentBarrier service endpoints."""
 
 from __future__ import annotations
 
@@ -11,14 +11,14 @@ from hashlib import sha256
 from pathlib import Path
 from typing import NoReturn, cast
 
-ALL_SERVICE_SCOPES = frozenset({"actions:read", "actions:decide", "audit:read"})
+ALL_SERVICE_SCOPES = frozenset({"actions:read", "actions:decide", "audit:read", "mcp:call"})
 _TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9._~+/=-]+$")
 _DIGEST_PATTERN = re.compile(r"^[0-9a-fA-F]{64}$")
 _DUMMY_DIGEST = "0" * 64
 
 
 def hash_bearer_token(token: str) -> str:
-    """Return the SHA-256 value stored in an approval-service auth file."""
+    """Return the SHA-256 value stored in an AgentBarrier service auth file."""
 
     _validate_presented_token(token)
     return sha256(token.encode("ascii")).hexdigest()
@@ -26,7 +26,7 @@ def hash_bearer_token(token: str) -> str:
 
 @dataclass(frozen=True, slots=True)
 class Principal:
-    """Authenticated service identity and its exact approval API scopes."""
+    """Authenticated service identity and its exact endpoint scopes."""
 
     subject: str
     scopes: frozenset[str]
@@ -38,7 +38,7 @@ class Principal:
             raise ValueError("principal subject must not contain control characters")
         unknown = self.scopes - ALL_SERVICE_SCOPES
         if unknown:
-            raise ValueError(f"unknown approval service scopes: {', '.join(sorted(unknown))}")
+            raise ValueError(f"unknown AgentBarrier service scopes: {', '.join(sorted(unknown))}")
 
     def has_scope(self, scope: str) -> bool:
         """Return whether this identity carries one exact scope."""
@@ -73,9 +73,9 @@ class StaticBearerAuth:
 
     def __init__(self, credentials: Sequence[_Credential]) -> None:
         if not credentials:
-            raise ValueError("approval service auth must configure at least one token")
+            raise ValueError("AgentBarrier service auth must configure at least one token")
         if len(credentials) > 100:
-            raise ValueError("approval service auth supports at most 100 static tokens")
+            raise ValueError("AgentBarrier service auth supports at most 100 static tokens")
         digests = [credential.token_digest for credential in credentials]
         if len(digests) != len(set(digests)):
             raise ValueError("token_sha256 values must be unique")
@@ -87,7 +87,7 @@ class StaticBearerAuth:
 
         data: object = json.loads(Path(path).read_text(encoding="utf-8"))
         if not isinstance(data, Mapping):
-            raise TypeError("approval service auth document must be a JSON object")
+            raise TypeError("AgentBarrier service auth document must be a JSON object")
         return cls.from_mapping(cast(Mapping[str, object], data))
 
     @classmethod
@@ -95,20 +95,20 @@ class StaticBearerAuth:
         """Parse and validate a strict auth mapping."""
 
         if not isinstance(data, Mapping):
-            raise TypeError("approval service auth document must be a JSON object")
+            raise TypeError("AgentBarrier service auth document must be a JSON object")
         _validate_keys(data, {"version", "tokens"}, label="auth document")
         if data.get("version") != "1":
-            raise ValueError("approval service auth version must be '1'")
+            raise ValueError("AgentBarrier service auth version must be '1'")
         raw_tokens = data.get("tokens")
         if not isinstance(raw_tokens, Sequence) or isinstance(raw_tokens, (str, bytes)):
-            raise TypeError("approval service auth tokens must be a list")
+            raise TypeError("AgentBarrier service auth tokens must be a list")
         credentials = tuple(cls._parse_credential(item) for item in raw_tokens)
         return cls(credentials)
 
     @staticmethod
     def _parse_credential(value: object) -> _Credential:
         if not isinstance(value, Mapping):
-            raise TypeError("each approval service token must be an object")
+            raise TypeError("each AgentBarrier service token must be an object")
         item = cast(Mapping[str, object], value)
         _validate_keys(item, {"subject", "token_sha256", "scopes"}, label="token")
         subject = item.get("subject")

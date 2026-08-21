@@ -56,11 +56,11 @@ Deliverables:
 - runtime adapters for the supported agent frameworks where the real tool boundary is available;
 - protocol-level conformance fixtures that do not require model credentials.
 
-The development branch now has the transport-neutral runtime boundary, MCP tool gateway, scoped
-approval API, durable signed webhook worker, and OpenAI Agents, LangGraph, PydanticAI, and Google
-ADK runtime tool builders. Raw transport conformance and remaining framework runtime adapters
-remain release gates. The core, LangGraph, PydanticAI, and Google ADK lifecycles now run from the
-built wheel in package CI.
+The development branch now has the transport-neutral runtime boundary; stdio and authenticated
+Streamable HTTP MCP gateways; upstream bearer injection; a scoped approval API; a durable signed
+webhook worker; and OpenAI Agents, LangGraph, PydanticAI, and Google ADK runtime tool builders. Raw
+transport fixtures cover the supported protocol boundary. The core, MCP, LangGraph, PydanticAI,
+and Google ADK lifecycles run from the built wheel in package CI.
 
 Release gates:
 

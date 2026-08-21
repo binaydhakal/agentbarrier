@@ -121,7 +121,7 @@ def test_mcp_http_cli_uses_safe_listen_defaults(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    captured: list[tuple[mcp_runner.MCPGatewayConfig, str, int, str]] = []
+    captured: list[tuple[mcp_runner.MCPGatewayConfig, str, int, str, str | None, int]] = []
 
     def run_http(
         config: mcp_runner.MCPGatewayConfig,
@@ -129,8 +129,10 @@ def test_mcp_http_cli_uses_safe_listen_defaults(
         host: str,
         port: int,
         path: str,
+        auth_path: str | None,
+        max_request_body_size: int,
     ) -> None:
-        captured.append((config, host, port, path))
+        captured.append((config, host, port, path, auth_path, max_request_body_size))
 
     monkeypatch.setattr(mcp_runner, "run_http_gateway", run_http)
     assert (
@@ -148,7 +150,46 @@ def test_mcp_http_cli_uses_safe_listen_defaults(
         )
         == 0
     )
-    assert captured[0][1:] == ("127.0.0.1", 8765, "/mcp")
+    assert captured[0][1:] == ("127.0.0.1", 8765, "/mcp", None, 1024 * 1024)
+
+
+def test_mcp_http_cli_forwards_authentication_and_request_limits(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: list[dict[str, object]] = []
+
+    def run_http(config: mcp_runner.MCPGatewayConfig, **keywords: object) -> None:
+        captured.append({"config": config, **keywords})
+
+    monkeypatch.setattr(mcp_runner, "run_http_gateway", run_http)
+    auth_path = tmp_path / "auth.json"
+    assert (
+        main(
+            [
+                "mcp",
+                "http",
+                "--policy",
+                str(tmp_path / "policy.json"),
+                "--db",
+                str(tmp_path / "runtime.db"),
+                "--upstream-url",
+                "https://mcp.example.com/mcp",
+                "--upstream-bearer-token-env",
+                "MCP_UPSTREAM_TOKEN",
+                "--auth-config",
+                str(auth_path),
+                "--max-request-bytes",
+                "2097152",
+            ]
+        )
+        == 0
+    )
+    config = captured[0]["config"]
+    assert isinstance(config, mcp_runner.MCPGatewayConfig)
+    assert config.upstream_bearer_token_env == "MCP_UPSTREAM_TOKEN"
+    assert captured[0]["auth_path"] == str(auth_path)
+    assert captured[0]["max_request_body_size"] == 2 * 1024 * 1024
 
 
 def test_approval_api_cli_uses_safe_listen_defaults(

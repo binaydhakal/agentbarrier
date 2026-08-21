@@ -155,3 +155,21 @@ def test_static_bearer_auth_rejects_duplicate_digests_and_bad_principals() -> No
         Principal("bad\nsubject", frozenset())
     with pytest.raises(ValueError, match="16 to 512"):
         hash_bearer_token("short")
+
+
+def test_static_bearer_auth_accepts_mcp_call_scope() -> None:
+    token = "mcp-gateway-token-0123456789"
+    auth = StaticBearerAuth.from_mapping(
+        {
+            "version": "1",
+            "tokens": [
+                {
+                    "subject": "mcp-client",
+                    "token_sha256": hash_bearer_token(token),
+                    "scopes": ["mcp:call"],
+                }
+            ],
+        }
+    )
+    principal = auth.authenticate(f"Bearer {token}")
+    StaticBearerAuth.require_scope(principal, "mcp:call")

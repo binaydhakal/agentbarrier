@@ -14,6 +14,12 @@ All notable changes to this project will be documented in this file. The format 
   stdio and Streamable HTTP runners, exact operation identity, approval holds, duplicate-call
   protection, result replay, reconnect handling, progress forwarding, and fail-closed upstream
   cancellation or failure behavior.
+- Scoped bearer authentication for Streamable HTTP clients, mandatory authentication on
+  non-loopback listeners, a bounded configurable request size, and secret-manager-friendly
+  upstream bearer injection from a named environment variable with redirects disabled and remote
+  plaintext upstreams rejected.
+- Raw Streamable HTTP authorization, initialization, discovery, execution, replay, malformed
+  request, and size-limit conformance fixtures plus an installed-wheel MCP lifecycle audit.
 - Optional `mcp` dependency group and `agentbarrier mcp stdio|http` operational commands.
 - Authenticated approval HTTP API with SHA-256-configured bearer credentials, exact read/decision/
   audit scopes, identity-bound decisions, idempotent decision replay, stable JSON errors,

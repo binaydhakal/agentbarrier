@@ -88,9 +88,14 @@ command, URL, API token, or network route remains available to the agent.
 - MCP JSON-RPC request IDs are not treated as business idempotency keys. The gateway requires an
   explicit metadata value or configured argument path, binds it to the exact request, and fails
   closed when it is absent or changes meaning.
-- The development HTTP gateway binds to loopback by default and does not yet authenticate public
-  MCP clients. Public exposure requires TLS, authenticated ingress, request-size and rate limits,
-  and network isolation from the upstream endpoint until native service authorization ships.
+- The HTTP gateway binds to loopback by default, limits request bodies, and rejects non-loopback
+  configuration without scoped bearer authentication. Native static tokens are an application
+  boundary, not TLS, rotation, rate limiting, or an identity provider; deployments still require
+  trusted ingress and network isolation from the upstream endpoint.
+- Upstream bearer credentials are read from a named environment variable, sent only in an
+  Authorization header, and never followed across redirects. Remote upstreams require HTTPS;
+  plaintext HTTP is restricted to loopback. Process-environment access and destination allow-
+  listing remain deployment responsibilities.
 - Cancellation and upstream failures after an execution claim become `unknown`. The gateway
   cannot infer whether an external side effect committed from a closed stream or protocol error.
 - Approval API reviewer identity comes only from the authenticated token subject. The JSON body
@@ -142,8 +147,9 @@ AgentBarrier does not:
 - sandbox or authenticate local runtime callers;
 - stop code that bypasses the protected function wrapper;
 - stop an MCP client that can bypass the gateway and call the upstream server directly;
-- authenticate public MCP clients in the current 0.5.0 development slice;
-- provide an identity provider, token rotation service, or TLS termination for the approval API;
+- provide an identity provider, token rotation service, or TLS termination for the approval API or
+  MCP gateway;
+- safely resume interactive MCP `InputRequiredResult` rounds after an execution claim;
 - make an external webhook receiver trustworthy, available, or exactly once;
 - invent a reliable business idempotency key from a JSON-RPC request ID;
 - secure, sign, encrypt, replicate, or retain the SQLite database and its backups;
