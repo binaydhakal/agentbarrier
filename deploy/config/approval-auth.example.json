@@ -1,0 +1,26 @@
+{
+  "version": "2",
+  "organizations": [
+    {
+      "id": "example",
+      "namespaces": ["production"],
+      "require_separate_approver": true
+    }
+  ],
+  "roles": [
+    {
+      "id": "reviewer",
+      "scopes": ["actions:read", "actions:decide", "audit:read"],
+      "decisions": ["approve", "reject"]
+    }
+  ],
+  "tokens": [
+    {
+      "subject": "replace-with-reviewer-subject",
+      "kind": "user",
+      "organization": "example",
+      "roles": ["reviewer"],
+      "token_sha256": "REPLACE_WITH_AGENTBARRIER_AUTH_HASH_TOKEN_OUTPUT"
+    }
+  ]
+}

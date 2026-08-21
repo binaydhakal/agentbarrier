@@ -19,6 +19,7 @@ from agentbarrier.errors import (
     EmergencyPauseActive,
     InvalidActionState,
     PolicyDenied,
+    RuntimeStoreError,
 )
 from agentbarrier.models import Decision
 from agentbarrier.runtime import (
@@ -833,7 +834,7 @@ def test_store_rejects_unknown_schema_version(tmp_path: Path) -> None:
     connection.commit()
     connection.close()
 
-    with pytest.raises(RuntimeError, match="unsupported"):
+    with pytest.raises(RuntimeStoreError, match="unsupported"):
         SQLiteRuntimeStore(path)
 
 

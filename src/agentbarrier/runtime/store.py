@@ -27,6 +27,7 @@ from agentbarrier.errors import (
     EmergencyPauseActive,
     InvalidActionState,
     PolicyDenied,
+    RuntimeStoreError,
 )
 from agentbarrier.models import Decision, JsonValue
 from agentbarrier.runtime.models import (
@@ -151,7 +152,7 @@ class _SQLRuntimeStore:
             else:
                 previous_version = str(row["value"])
             if previous_version not in {"1", "2", "3", "4", _SCHEMA_VERSION}:
-                raise RuntimeError(
+                raise RuntimeStoreError(
                     f"unsupported runtime schema version {previous_version!r}; "
                     f"expected {_SCHEMA_VERSION!r}"
                 )

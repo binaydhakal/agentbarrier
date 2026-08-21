@@ -20,6 +20,11 @@ from agentbarrier.runtime.models import (
     RuntimeRequest,
     RuntimeStatus,
 )
+from agentbarrier.runtime.observation import (
+    NoopRuntimeObserver,
+    RuntimeActionObservation,
+    RuntimeObserver,
+)
 from agentbarrier.runtime.policy import ArgumentCondition, PolicyRule, RuntimePolicy
 from agentbarrier.runtime.postgres import PostgresRuntimeStore
 from agentbarrier.runtime.protocol import RuntimeStore
@@ -31,17 +36,20 @@ __all__ = [
     "ConditionOperator",
     "DecisionAuthorization",
     "IdempotencySelector",
+    "NoopRuntimeObserver",
     "PolicyDecision",
     "PolicyEffect",
     "PolicyRule",
     "PostgresRuntimeStore",
     "RuntimeAction",
+    "RuntimeActionObservation",
     "RuntimeBarrier",
     "RuntimeControlEvent",
     "RuntimeControlReceipt",
     "RuntimeEvent",
     "RuntimeLimit",
     "RuntimeLimitUsage",
+    "RuntimeObserver",
     "RuntimePause",
     "RuntimePolicy",
     "RuntimeReceipt",

@@ -1,0 +1,98 @@
+name: agentbarrier
+
+services:
+  postgres:
+    image: postgres:18.4-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-agentbarrier}
+      POSTGRES_USER: ${AGENTBARRIER_MIGRATION_DB_USER:-agentbarrier_migrator}
+      POSTGRES_PASSWORD: ${AGENTBARRIER_MIGRATION_DB_PASSWORD:?set AGENTBARRIER_MIGRATION_DB_PASSWORD in deploy/.env}
+      AGENTBARRIER_RUNTIME_DB_USER: ${AGENTBARRIER_RUNTIME_DB_USER:-agentbarrier_runtime}
+      AGENTBARRIER_RUNTIME_DB_PASSWORD: ${AGENTBARRIER_RUNTIME_DB_PASSWORD:?set AGENTBARRIER_RUNTIME_DB_PASSWORD in deploy/.env}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./postgres/10-agentbarrier-runtime.sh:/docker-entrypoint-initdb.d/10-agentbarrier-runtime.sh:ro
+    networks: [database]
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: agentbarrier:${AGENTBARRIER_IMAGE_TAG:-local}
+    restart: "no"
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      AGENTBARRIER_MIGRATION_POSTGRES_DSN: ${AGENTBARRIER_MIGRATION_POSTGRES_DSN:?set AGENTBARRIER_MIGRATION_POSTGRES_DSN in deploy/.env}
+    command:
+      - database
+      - migrate
+      - --postgres-dsn-env
+      - AGENTBARRIER_MIGRATION_POSTGRES_DSN
+      - --postgres-create-schema
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [database]
+
+  api:
+    image: agentbarrier:${AGENTBARRIER_IMAGE_TAG:-local}
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      AGENTBARRIER_RUNTIME_POSTGRES_DSN: ${AGENTBARRIER_RUNTIME_POSTGRES_DSN:?set AGENTBARRIER_RUNTIME_POSTGRES_DSN in deploy/.env}
+    command:
+      - api
+      - --postgres-dsn-env
+      - AGENTBARRIER_RUNTIME_POSTGRES_DSN
+      - --auth-config
+      - /run/agentbarrier/approval-auth.json
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8787"
+    volumes:
+      - ./config/approval-auth.json:/run/agentbarrier/approval-auth.json:ro
+    ports:
+      - 127.0.0.1:8787:8787
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8787/health/ready', timeout=2).read()
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks: [database, ingress]
+
+volumes:
+  postgres-data:
+
+networks:
+  database:
+    internal: true
+  ingress:

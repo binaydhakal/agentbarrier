@@ -120,6 +120,9 @@ Do not point an older AgentBarrier version at a newer schema. Roll back applicat
 restoring a compatible backup. Receipt hashes detect accidental edits; they are not signatures and
 do not protect against an identity that can rewrite all runtime rows.
 
+The [production deployment and recovery guide](deployment.md) adds a complete restore drill,
+maintenance-window upgrade sequence, rollback boundary, readiness checks, and incident runbook.
+
 ## CI contract
 
 Project CI starts a real PostgreSQL service, runs the shared SQLite/PostgreSQL behavioral contract,

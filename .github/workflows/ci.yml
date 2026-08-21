@@ -178,6 +178,7 @@ jobs:
           uv pip install --python build/wheel-audit/bin/python dist/*.whl
           build/wheel-audit/bin/python tools/audit_runtime_wheel.py
           build/wheel-audit/bin/python tools/audit_runtime_controls_wheel.py
+          build/wheel-audit/bin/python tools/audit_upgrade_recovery_wheel.py
           uv pip install --python build/wheel-audit/bin/python \
             "mcp>=2,<3" \
             "httpx2>=2.12,<3" \
@@ -185,9 +186,14 @@ jobs:
             "starlette>=0.47,<2" \
             "uvicorn>=0.34,<1"
           build/wheel-audit/bin/python tools/audit_mcp_gateway_wheel.py
+          build/wheel-audit/bin/python tools/audit_webhook_wheel.py
           build/wheel-audit/bin/python tools/audit_dashboard_wheel.py
           build/wheel-audit/bin/python tools/audit_multi_user_wheel.py
           build/wheel-audit/bin/python tools/audit_slack_wheel.py
+          uv pip install --python build/wheel-audit/bin/python "opentelemetry-sdk>=1.31,<2"
+          build/wheel-audit/bin/python tools/audit_observability_wheel.py
+          uv pip install --python build/wheel-audit/bin/python "openai-agents>=0.22,<1"
+          build/wheel-audit/bin/python tools/audit_openai_agents_wheel.py
           uv pip install --python build/wheel-audit/bin/python "langgraph>=1.2,<2"
           build/wheel-audit/bin/python tools/audit_langgraph_wheel.py
           uv pip install --python build/wheel-audit/bin/python "pydantic-ai-slim>=2.32,<3"
@@ -199,3 +205,62 @@ jobs:
           name: distributions
           path: dist/
           if-no-files-found: error
+
+  container:
+    name: Production container
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate Compose configuration
+        run: >-
+          docker compose
+          --env-file deploy/.env.example
+          --file deploy/compose.yml
+          config --quiet
+      - name: Build locked runtime image
+        run: docker build --file deploy/Dockerfile --tag agentbarrier:local .
+      - name: Audit non-root read-only runtime
+        run: |
+          docker run --rm --read-only agentbarrier:local --version
+          docker run --rm --read-only --entrypoint python agentbarrier:local \
+            -c "import os; assert os.getuid() == 10001 and os.getgid() == 10001"
+      - name: Audit separated PostgreSQL roles
+        run: |
+          docker compose \
+            --project-name agentbarrier-ci \
+            --env-file deploy/.env.example \
+            --file deploy/compose.yml \
+            up --detach --wait postgres
+          docker compose \
+            --project-name agentbarrier-ci \
+            --env-file deploy/.env.example \
+            --file deploy/compose.yml \
+            run --rm migrate
+          docker compose \
+            --project-name agentbarrier-ci \
+            --env-file deploy/.env.example \
+            --file deploy/compose.yml \
+            run --rm \
+            --env AGENTBARRIER_RUNTIME_POSTGRES_DSN=postgresql://agentbarrier_runtime:replace-with-runtime-secret@postgres:5432/agentbarrier \
+            migrate database status \
+            --postgres-dsn-env AGENTBARRIER_RUNTIME_POSTGRES_DSN --json
+          docker compose \
+            --project-name agentbarrier-ci \
+            --env-file deploy/.env.example \
+            --file deploy/compose.yml \
+            exec \
+            --env PGPASSWORD=replace-with-runtime-secret \
+            postgres psql \
+            --username agentbarrier_runtime \
+            --dbname agentbarrier \
+            --command "SELECT CASE WHEN has_schema_privilege(current_user, 'agentbarrier', 'USAGE') AND NOT has_schema_privilege(current_user, 'agentbarrier', 'CREATE') THEN 1 ELSE 1 / 0 END;"
+      - name: Remove deployment audit resources
+        if: always()
+        run: >-
+          docker compose
+          --project-name agentbarrier-ci
+          --env-file deploy/.env.example
+          --file deploy/compose.yml
+          down --volumes --remove-orphans

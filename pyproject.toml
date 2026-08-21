@@ -69,6 +69,8 @@ slack = [
   "uvicorn>=0.34,<1",
 ]
 postgres = ["psycopg>=3.3,<4"]
+postgres-binary = ["psycopg[binary]>=3.3,<4"]
+observability = ["opentelemetry-api>=1.31,<2"]
 openai = ["openai-agents>=0.22,<1"]
 langgraph = ["langgraph>=1.2,<2; python_version >= '3.11'"]
 pydantic-ai = ["pydantic-ai-slim>=2.32,<3"]
@@ -84,6 +86,7 @@ test = [
   "mypy>=1.15",
   "pytest>=8.3",
   "pytest-cov>=6.0",
+  "pyyaml>=6,<7",
   "ruff>=0.11",
   "twine>=6.1",
 ]
@@ -94,6 +97,7 @@ all = [
   "starlette>=0.47,<2",
   "uvicorn>=0.34,<1",
   "psycopg>=3.3,<4",
+  "opentelemetry-api>=1.31,<2",
   "openai-agents>=0.22,<1",
   "langgraph>=1.2,<2; python_version >= '3.11'",
   "pydantic-ai-slim>=2.32,<3",
@@ -109,6 +113,7 @@ Issues = "https://github.com/binaydhakal/agentbarrier/issues"
 Changelog = "https://github.com/binaydhakal/agentbarrier/blob/main/CHANGELOG.md"
 Compatibility = "https://github.com/binaydhakal/agentbarrier/blob/main/docs/compatibility.md"
 "CI Guide" = "https://github.com/binaydhakal/agentbarrier/blob/main/docs/ci.md"
+Deployment = "https://github.com/binaydhakal/agentbarrier/blob/main/docs/deployment.md"
 
 [project.scripts]
 agentbarrier = "agentbarrier.cli:main"

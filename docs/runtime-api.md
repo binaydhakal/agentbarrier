@@ -1,8 +1,9 @@
 # Runtime API reference
 
 > The runtime API is public in AgentBarrier 0.4.0 and may change before 1.0 with documented release
-> notes and migrations. Import public runtime symbols from `agentbarrier.runtime` and runtime
-> exceptions from `agentbarrier.errors`.
+> notes and migrations. Beginning with 1.0.0, exported names follow the
+> [stability and migration policy](stability-policy.md). Import public runtime symbols from
+> `agentbarrier.runtime` and runtime exceptions from `agentbarrier.errors`.
 
 ## Policy
 
@@ -65,6 +66,7 @@ RuntimeBarrier(
     namespace: str = "default",
     organization_id: str = "default",
     requested_by: str | None = None,
+    observer: RuntimeObserver | None = None,
 )
 ```
 
@@ -78,6 +80,12 @@ implicit and explicit default arguments identify the same request.
 `organization_id` and `requested_by` bind tenant and requester identity into non-legacy request
 digests and durable action records. Configure both for production services and pair them with
 version 2 [multi-user authorization](multi-user-authorization.md).
+`observer` defaults to `NoopRuntimeObserver`. Install the `observability` extra and pass an
+`OpenTelemetryObserver` for failure-isolated spans, metrics, and structured logs; see the
+[observability guide](observability.md).
+Custom observers can implement the structural `RuntimeObserver` and `RuntimeActionObservation`
+protocols exported from `agentbarrier.runtime`. Every observer lifecycle method is isolated from the
+protected action, including failures derived directly from `BaseException`.
 
 The wrapper is the complete-mediation boundary. Every route to the consequential function must go
 through it; retaining an unwrapped route bypasses AgentBarrier.
@@ -169,9 +177,12 @@ PostgresRuntimeStore(
 )
 ```
 
-The PostgreSQL extra is loaded only when this backend is constructed. Normal construction validates
-an already-migrated dedicated schema. Migration code must explicitly select `migrate=True`; first
-deployment may also select `create_schema=True`. `create_schema=True` without migration is rejected.
+The `postgres` extra is loaded only when this backend is constructed. It lets applications select
+their system, binary, or pool Psycopg implementation. The `postgres-binary` convenience extra is
+used by the reference container when system PostgreSQL libraries are intentionally absent. Normal
+construction validates an already-migrated dedicated schema. Migration code must explicitly select
+`migrate=True`; first deployment may also select `create_schema=True`. `create_schema=True` without
+migration is rejected.
 
 State-changing operations take a schema-specific transaction advisory lock to preserve execution,
 limit, and receipt-chain invariants across processes. `backup()` is intentionally unavailable; use

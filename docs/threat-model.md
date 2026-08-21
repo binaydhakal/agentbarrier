@@ -146,6 +146,11 @@ command, URL, API token, or network route remains available to the agent.
   do not immediately revoke an existing session; urgent revocation requires a process restart, and
   deployments should choose a short session TTL. This release supports one dashboard process, not
   a load-balanced session cluster.
+- Runtime observability excludes arguments, results, idempotency keys, request digests, people or
+  service subjects, decision reasons, exception messages, and organization IDs by default.
+  Telemetry hooks are failure-isolated and cannot change action outcomes. Exporters, processors,
+  collectors, opt-in dimensions, backend access, sampling, and retention remain operator trust and
+  privacy responsibilities; telemetry is not the authoritative audit trail.
 - Action arguments, stored results, subjects, and decision reasons are intentionally visible to an
   authorized reviewer and must be treated as sensitive at the browser, proxy, logs, screenshots,
   and endpoint device. HTML escaping limits markup injection but does not make the data non-secret.
@@ -236,3 +241,5 @@ For runtime use, keep the database and policy outside model-writable locations, 
 service account, back up before migrations, inspect `database status`, and alert on `unknown`,
 invalid receipt chains, rejected binding reuse, and repeated policy denials. Protect downstream
 systems with their own authorization and idempotency enforcement as a second boundary.
+Use the [production deployment and recovery guide](deployment.md) to exercise restore, upgrade,
+rollback, credential rotation, and incident containment before carrying live consequential actions.

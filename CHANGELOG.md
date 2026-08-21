@@ -8,12 +8,27 @@ All notable changes to this project will be documented in this file. The format 
 
 ### Added
 
+- A documented 1.x stability and migration policy, explicit public exports for runtime exceptions,
+  service webhooks, and MCP runners, plus CI contract snapshots for exported names and critical
+  callable signatures.
+- A locked, non-root production container, hardened PostgreSQL/approval-API Compose baseline, and
+  deployment guide with credential separation, readiness, backup/restore drills, maintenance-window
+  upgrades, safe rollback, alerting, and incident response.
+- A `postgres-binary` deployment extra so the reference container includes a working isolated
+  Psycopg client without requiring system PostgreSQL libraries in the runtime stage.
+- Clean-wheel recovery and webhook audits covering schema-v1 migration, safe downgrade refusal,
+  backup/restore replay, exact signed delivery bytes, bounded retry, and secret redaction.
+- A clean-wheel OpenAI Agents FunctionTool audit covering injected-context exclusion, approval hold,
+  exact execution, and durable replay through the real SDK boundary.
 - Version 2 multi-user authorization with organizations, exclusive namespace ownership, reusable
   roles, user and service identities, exact approve/reject powers, tenant-filtered API/dashboard/
   Slack views, requester identity binding, and transaction-boundary separation-of-duty checks.
 - Organization and requester attribution for Python and MCP runtime barriers, schema version 5
   migrations for SQLite and PostgreSQL, legacy digest compatibility, and organization-scoped
   Slack notifications and decisions.
+- Failure-isolated OpenTelemetry runtime spans and low-cardinality metrics plus fixed-message
+  structured lifecycle logs, privacy controls, explicit high-cardinality opt-ins, documentation,
+  and a real SDK installed-wheel export audit.
 - Durable emergency pauses with global, namespace, tool, and combined scopes, enforced atomically
   at the final execution claim and recorded in both action and operator-control receipt chains.
 - Fixed-window action and non-negative integer-value limits with atomic cross-process capacity

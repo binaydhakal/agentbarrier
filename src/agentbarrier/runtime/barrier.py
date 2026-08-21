@@ -21,6 +21,7 @@ from agentbarrier.runtime.models import (
     RuntimeStatus,
     canonical_json,
 )
+from agentbarrier.runtime.observation import NoopRuntimeObserver, RuntimeObserver, safe_observation
 from agentbarrier.runtime.policy import RuntimePolicy
 from agentbarrier.runtime.protocol import RuntimeStore
 
@@ -41,6 +42,7 @@ class RuntimeBarrier:
         organization_id: str = "default",
         requested_by: str | None = None,
         clock_ns: Callable[[], int] = time.time_ns,
+        observer: RuntimeObserver | None = None,
     ) -> None:
         if not namespace.strip():
             raise ValueError("namespace must not be empty")
@@ -54,6 +56,7 @@ class RuntimeBarrier:
         self.organization_id = organization_id
         self.requested_by = requested_by
         self._clock_ns = clock_ns
+        self.observer = observer or NoopRuntimeObserver()
 
     def protect(
         self,
@@ -128,21 +131,43 @@ class RuntimeBarrier:
 
         if not callable(operation):
             raise TypeError("operation must be callable")
-        request, action = self._prepare_request(
+        with safe_observation(
+            self.observer,
+            organization_id=self.organization_id,
+            namespace=self.namespace,
             tool_name=tool_name,
-            arguments=arguments,
-            idempotency_key=idempotency_key,
-        )
-        claim = self.store.claim(action.action_id, request_digest=request.request_digest)
-        if claim.outcome is ClaimOutcome.REPLAY:
-            return cast(R, claim.result)
-        try:
-            result = operation()
-        except BaseException as exc:
-            self._record_unknown(claim.action, request, exc)
-            raise
-        self._complete(claim.action, request, result)
-        return result
+        ) as observation:
+            observed_action: RuntimeAction | None = None
+            try:
+                request, action = self._prepare_request(
+                    tool_name=tool_name,
+                    arguments=arguments,
+                    idempotency_key=idempotency_key,
+                )
+                observed_action = action
+                observation.bind(action)
+                claim = self.store.claim(action.action_id, request_digest=request.request_digest)
+                observed_action = claim.action
+                if claim.outcome is ClaimOutcome.REPLAY:
+                    observation.finish("replayed", action=claim.action)
+                    return cast(R, claim.result)
+                try:
+                    result = operation()
+                except BaseException as exc:
+                    observed_action = self._record_unknown(claim.action, request, exc)
+                    raise
+                observed_action = self._complete(claim.action, request, result)
+                observation.finish("succeeded", action=observed_action)
+                return result
+            except BaseException as error:
+                action_from_error = getattr(error, "action", observed_action)
+                observation.fail(
+                    error,
+                    action=action_from_error
+                    if isinstance(action_from_error, RuntimeAction)
+                    else None,
+                )
+                raise
 
     async def execute_async(
         self,
@@ -156,21 +181,43 @@ class RuntimeBarrier:
 
         if not callable(operation):
             raise TypeError("operation must be callable")
-        request, action = self._prepare_request(
+        with safe_observation(
+            self.observer,
+            organization_id=self.organization_id,
+            namespace=self.namespace,
             tool_name=tool_name,
-            arguments=arguments,
-            idempotency_key=idempotency_key,
-        )
-        claim = self.store.claim(action.action_id, request_digest=request.request_digest)
-        if claim.outcome is ClaimOutcome.REPLAY:
-            return cast(R, claim.result)
-        try:
-            result = await operation()
-        except BaseException as exc:
-            self._record_unknown(claim.action, request, exc)
-            raise
-        self._complete(claim.action, request, result)
-        return result
+        ) as observation:
+            observed_action: RuntimeAction | None = None
+            try:
+                request, action = self._prepare_request(
+                    tool_name=tool_name,
+                    arguments=arguments,
+                    idempotency_key=idempotency_key,
+                )
+                observed_action = action
+                observation.bind(action)
+                claim = self.store.claim(action.action_id, request_digest=request.request_digest)
+                observed_action = claim.action
+                if claim.outcome is ClaimOutcome.REPLAY:
+                    observation.finish("replayed", action=claim.action)
+                    return cast(R, claim.result)
+                try:
+                    result = await operation()
+                except BaseException as exc:
+                    observed_action = self._record_unknown(claim.action, request, exc)
+                    raise
+                observed_action = self._complete(claim.action, request, result)
+                observation.finish("succeeded", action=observed_action)
+                return result
+            except BaseException as error:
+                action_from_error = getattr(error, "action", observed_action)
+                observation.fail(
+                    error,
+                    action=action_from_error
+                    if isinstance(action_from_error, RuntimeAction)
+                    else None,
+                )
+                raise
 
     @staticmethod
     def _bind_arguments(
@@ -247,11 +294,11 @@ class RuntimeBarrier:
         action: RuntimeAction,
         request: RuntimeRequest,
         result: object,
-    ) -> None:
+    ) -> RuntimeAction:
         try:
             encoded = canonical_json(cast(JsonValue, result), path="result")
             normalized = cast(JsonValue, json.loads(encoded))
-            self.store.complete(
+            return self.store.complete(
                 action.action_id,
                 request_digest=request.request_digest,
                 result=normalized,

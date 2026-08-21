@@ -48,6 +48,20 @@ def test_dashboard_wheel_audit_binds_approval_to_authenticated_reviewer(tmp_path
     }
 
 
+def test_webhook_wheel_audit_signs_redacted_retried_bytes(tmp_path: Path) -> None:
+    pytest.importorskip("starlette", reason="service optional dependency is not installed")
+    anyio = pytest.importorskip("anyio", reason="service optional dependency is not installed")
+    from tools.audit_webhook_wheel import run_audit as run_webhook_audit
+
+    result = anyio.run(run_webhook_audit, tmp_path)
+    assert result == {
+        "attempts": 2,
+        "event_id": "runtime-receipt-2",
+        "redacted": True,
+        "status": "passed",
+    }
+
+
 def test_postgres_wheel_audit_preserves_runtime_and_control_invariants(tmp_path: Path) -> None:
     if "AGENTBARRIER_TEST_POSTGRES_DSN" not in os.environ:
         pytest.skip("AGENTBARRIER_TEST_POSTGRES_DSN is not configured")
@@ -81,6 +95,22 @@ def test_langgraph_wheel_audit_executes_effect_once(tmp_path: Path) -> None:
     from tools.audit_langgraph_wheel import run_audit as run_langgraph_audit
 
     result = run_langgraph_audit(tmp_path)
+    assert result["status"] == "passed"
+    assert result["effect_count"] == 1
+    assert result["events"] == [
+        "approval_requested",
+        "approved",
+        "execution_started",
+        "execution_succeeded",
+        "result_replayed",
+    ]
+
+
+def test_openai_agents_wheel_audit_executes_effect_once(tmp_path: Path) -> None:
+    pytest.importorskip("agents", reason="OpenAI Agents optional dependency is not installed")
+    from tools.audit_openai_agents_wheel import run_audit as run_openai_agents_audit
+
+    result = run_openai_agents_audit(tmp_path)
     assert result["status"] == "passed"
     assert result["effect_count"] == 1
     assert result["events"] == [

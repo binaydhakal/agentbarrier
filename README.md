@@ -36,6 +36,10 @@ in SQLite, prevents duplicate execution, and emits integrity-linked audit receip
 [runtime guide](https://github.com/binaydhakal/agentbarrier/blob/main/docs/runtime.md).
 The [runtime API reference](https://github.com/binaydhakal/agentbarrier/blob/main/docs/runtime-api.md)
 documents the public classes, lifecycle, and failure contract.
+The [stability and migration policy](docs/stability-policy.md) defines the public surface and the
+compatibility promise that begins with 1.0.0.
+The [production deployment and recovery guide](docs/deployment.md) covers the container baseline,
+roles, readiness, backup/restore drills, upgrades, rollback, and incident response.
 The main branch adds a deployable
 [MCP policy gateway](https://github.com/binaydhakal/agentbarrier/blob/main/docs/mcp-gateway.md)
 using the current MCP 2026-07-28 protocol through its official Python SDK, an authenticated
@@ -51,6 +55,9 @@ runtime receipt; see the [Slack guide](docs/slack.md).
 Organization-scoped roles and requester/reviewer separation are also available on the main branch.
 They isolate API and dashboard views and enforce every decision rule again inside the database
 transaction; see the [multi-user authorization guide](docs/multi-user-authorization.md).
+Optional privacy-safe OpenTelemetry spans and low-cardinality metrics plus structured lifecycle
+logs make live action outcomes observable without exporting arguments or results; see the
+[observability guide](docs/observability.md).
 
 > **Status:** early development. The public adapter contract is usable, but compatibility should
 > be pinned until the first stable release.
@@ -63,6 +70,12 @@ transaction; see the [multi-user authorization guide](docs/multi-user-authorizat
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/approval-api.md">Approval API</a>
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/multi-user-authorization.md">Multi-user authorization</a>
+  ·
+  <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/observability.md">Observability</a>
+  ·
+  <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/stability-policy.md">Stability policy</a>
+  ·
+  <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/deployment.md">Deployment</a>
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/dashboard.md">Dashboard</a>
   ·

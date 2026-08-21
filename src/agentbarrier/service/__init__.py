@@ -25,6 +25,17 @@ from agentbarrier.service.slack import (
     SlackWorker,
     create_slack_app,
 )
+from agentbarrier.service.webhooks import (
+    WebhookConfig,
+    WebhookDelivery,
+    WebhookDeliverySnapshot,
+    WebhookDeliveryStore,
+    WebhookEndpoint,
+    WebhookSender,
+    WebhookWorker,
+    build_webhook_body,
+    signature_headers,
+)
 
 __all__ = [
     "ALL_SERVICE_SCOPES",
@@ -40,8 +51,17 @@ __all__ = [
     "SlackReviewer",
     "SlackWorker",
     "StaticBearerAuth",
+    "WebhookConfig",
+    "WebhookDelivery",
+    "WebhookDeliverySnapshot",
+    "WebhookDeliveryStore",
+    "WebhookEndpoint",
+    "WebhookSender",
+    "WebhookWorker",
+    "build_webhook_body",
     "create_approval_app",
     "create_dashboard_app",
     "create_slack_app",
     "hash_bearer_token",
+    "signature_headers",
 ]

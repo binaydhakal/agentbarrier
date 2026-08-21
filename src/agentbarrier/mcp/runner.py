@@ -286,3 +286,13 @@ def _validate_upstream_url(url: str) -> None:
         raise ValueError("upstream_url must not contain a fragment")
     if parsed.scheme == "http" and not _is_loopback_host(hostname):
         raise ValueError("non-loopback upstream_url must use HTTPS")
+
+
+__all__ = [
+    "DEFAULT_MCP_REQUEST_BYTES",
+    "MAX_MCP_REQUEST_BYTES",
+    "MCPGatewayConfig",
+    "create_http_gateway_app",
+    "run_http_gateway",
+    "run_stdio_gateway",
+]

@@ -99,6 +99,8 @@ audit. Broader stable deployment work remains for 1.0.
 It also contains organization-scoped users and services, reusable roles, exact approve/reject
 permissions, API and dashboard data isolation, requester identity binding, and transaction-boundary
 separation-of-duty enforcement with legacy migration compatibility.
+Privacy-safe OpenTelemetry spans and metrics plus structured lifecycle logs are emitted through an
+optional failure-isolated observer, with a clean installed-wheel SDK export audit.
 
 ## 1.0.0 — stable production contract
 
@@ -114,7 +116,7 @@ Release gates:
 
 - every documented authorization rule is enforced at the store transaction boundary;
 - observability exports never contain configured sensitive argument paths;
-- backup, restore, rolling migration, and downgrade-failure exercises are reproducible;
+- backup, restore, maintenance-window migration, and downgrade-failure exercises are reproducible;
 - all supported installation and upgrade paths pass in clean environments;
 - the public 1.0 artifacts match the audited source tag and recorded digests.
 
