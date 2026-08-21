@@ -3,9 +3,13 @@
 > The approval API is under development for AgentBarrier 0.5.0. Bind it to loopback or a trusted
 > private ingress until the complete deployment and authorization audit is finished.
 
-The API lets an operator, internal service, or future dashboard inspect pending actions and record
+The API lets an operator or internal service inspect pending actions and record
 approval decisions without direct shell access to the runtime database. Reviewer identity comes
 from a scoped bearer credential and cannot be supplied or replaced by the request body.
+
+This JSON API remains the machine integration surface. Human reviewers can instead use the
+[server-rendered approval dashboard](dashboard.md), which shares the auth-file scopes but exchanges
+the bearer credential for a protected opaque browser session.
 
 ## Install
 

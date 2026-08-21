@@ -226,6 +226,52 @@ def test_approval_api_cli_uses_safe_listen_defaults(
     ]
 
 
+def test_dashboard_cli_forwards_secure_operational_configuration(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: list[dict[str, object]] = []
+
+    def run_approval_dashboard(**keywords: object) -> None:
+        captured.append(keywords)
+
+    monkeypatch.setattr(service_runner, "run_approval_dashboard", run_approval_dashboard)
+    database = tmp_path / "runtime.db"
+    auth_config = tmp_path / "auth.json"
+    assert (
+        main(
+            [
+                "dashboard",
+                "--db",
+                str(database),
+                "--auth-config",
+                str(auth_config),
+                "--host",
+                "10.0.0.5",
+                "--port",
+                "9443",
+                "--public-origin",
+                "https://review.example.com",
+                "--cookie-secure",
+                "--session-ttl",
+                "3600",
+            ]
+        )
+        == 0
+    )
+    assert captured == [
+        {
+            "database_path": str(database),
+            "auth_path": str(auth_config),
+            "host": "10.0.0.5",
+            "port": 9443,
+            "public_origin": "https://review.example.com",
+            "cookie_secure": True,
+            "session_ttl_seconds": 3600.0,
+        }
+    ]
+
+
 def test_auth_hash_token_reads_secret_from_environment_without_echoing_it(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],

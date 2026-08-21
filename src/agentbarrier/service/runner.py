@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 from pathlib import Path
 
 import anyio
@@ -10,6 +11,7 @@ import uvicorn
 from agentbarrier.runtime import SQLiteRuntimeStore
 from agentbarrier.service.api import create_approval_app
 from agentbarrier.service.auth import StaticBearerAuth
+from agentbarrier.service.dashboard import DashboardSessionStore, create_dashboard_app
 from agentbarrier.service.webhooks import (
     WebhookConfig,
     WebhookDeliverySnapshot,
@@ -34,6 +36,40 @@ def run_approval_api(
     auth = StaticBearerAuth.from_file(auth_path)
     with SQLiteRuntimeStore(database_path) as store:
         app = create_approval_app(store=store, auth=auth)
+        uvicorn.run(app, host=host, port=port, log_level="info")
+
+
+def run_approval_dashboard(
+    *,
+    database_path: str | Path,
+    auth_path: str | Path,
+    host: str = "127.0.0.1",
+    port: int = 8788,
+    public_origin: str | None = None,
+    cookie_secure: bool = False,
+    session_ttl_seconds: float = 8 * 60 * 60,
+) -> None:
+    """Run the server-rendered dashboard with loopback-safe defaults."""
+
+    if not host.strip():
+        raise ValueError("approval dashboard host must not be empty")
+    if not 1 <= port <= 65535:
+        raise ValueError("approval dashboard port must be between 1 and 65535")
+    if not _is_loopback_host(host) and (not cookie_secure or public_origin is None):
+        raise ValueError(
+            "non-loopback dashboard listeners require --cookie-secure and --public-origin"
+        )
+    _require_existing_file(database_path, label="runtime database")
+    auth = StaticBearerAuth.from_file(auth_path)
+    sessions = DashboardSessionStore(ttl_seconds=session_ttl_seconds)
+    with SQLiteRuntimeStore(database_path) as store:
+        app = create_dashboard_app(
+            store=store,
+            auth=auth,
+            sessions=sessions,
+            cookie_secure=cookie_secure,
+            public_origin=public_origin,
+        )
         uvicorn.run(app, host=host, port=port, log_level="info")
 
 
@@ -93,3 +129,13 @@ def _require_existing_file(path: str | Path, *, label: str) -> None:
     resolved = Path(path).expanduser()
     if not resolved.is_file():
         raise FileNotFoundError(f"{label} does not exist: {resolved}")
+
+
+def _is_loopback_host(host: str) -> bool:
+    normalized = host.strip().lower()
+    if normalized == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(normalized).is_loopback
+    except ValueError:
+        return False

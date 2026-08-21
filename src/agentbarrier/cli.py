@@ -278,6 +278,37 @@ def build_parser() -> argparse.ArgumentParser:
     api.add_argument("--port", type=int, default=8787, help="listen port (default: 8787)")
     api.set_defaults(handler=_run_approval_api)
 
+    dashboard = commands.add_parser(
+        "dashboard",
+        help="run the server-rendered approval dashboard",
+    )
+    _add_runtime_db_option(dashboard)
+    dashboard.add_argument(
+        "--auth-config",
+        required=True,
+        metavar="PATH",
+        help="strict scoped bearer-token digest file used for reviewer sign-in",
+    )
+    dashboard.add_argument("--host", default="127.0.0.1", help="listen host (default: 127.0.0.1)")
+    dashboard.add_argument("--port", type=int, default=8788, help="listen port (default: 8788)")
+    dashboard.add_argument(
+        "--public-origin",
+        help="external HTTPS origin used for same-origin validation",
+    )
+    dashboard.add_argument(
+        "--cookie-secure",
+        action="store_true",
+        help="send session cookies only over HTTPS (required off loopback)",
+    )
+    dashboard.add_argument(
+        "--session-ttl",
+        type=float,
+        default=8 * 60 * 60,
+        metavar="SECONDS",
+        help="browser session lifetime (default: 28800)",
+    )
+    dashboard.set_defaults(handler=_run_approval_dashboard)
+
     auth = commands.add_parser("auth", help="manage AgentBarrier service authentication material")
     auth_commands = auth.add_subparsers(dest="auth_command", required=True)
     hash_token = auth_commands.add_parser(
@@ -764,6 +795,25 @@ def _run_approval_api(arguments: argparse.Namespace) -> int:
         auth_path=cast(str, arguments.auth_config),
         host=cast(str, arguments.host),
         port=cast(int, arguments.port),
+    )
+    return 0
+
+
+def _run_approval_dashboard(arguments: argparse.Namespace) -> int:
+    try:
+        from agentbarrier.service.runner import run_approval_dashboard
+    except ImportError as error:
+        raise ImportError(
+            "dashboard dependencies are unavailable; install 'agentbarrier[service]'"
+        ) from error
+    run_approval_dashboard(
+        database_path=cast(str, arguments.db),
+        auth_path=cast(str, arguments.auth_config),
+        host=cast(str, arguments.host),
+        port=cast(int, arguments.port),
+        public_origin=cast(str | None, arguments.public_origin),
+        cookie_secure=cast(bool, arguments.cookie_secure),
+        session_ttl_seconds=cast(float, arguments.session_ttl),
     )
     return 0
 

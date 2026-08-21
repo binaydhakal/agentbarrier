@@ -34,6 +34,19 @@ def test_runtime_controls_wheel_audit_blocks_pause_and_limit(tmp_path: Path) -> 
     ]
 
 
+def test_dashboard_wheel_audit_binds_approval_to_authenticated_reviewer(tmp_path: Path) -> None:
+    pytest.importorskip("starlette", reason="dashboard optional dependency is not installed")
+    from tools.audit_dashboard_wheel import run_audit as run_dashboard_audit
+
+    result = run_dashboard_audit(tmp_path)
+    assert result == {
+        "action_id": "dashboard-wheel-action",
+        "decided_by": "dashboard-wheel-reviewer",
+        "events": ["approval_requested", "approved"],
+        "status": "passed",
+    }
+
+
 def test_langgraph_wheel_audit_executes_effect_once(tmp_path: Path) -> None:
     pytest.importorskip("langgraph", reason="LangGraph optional dependency is not installed")
     from tools.audit_langgraph_wheel import run_audit as run_langgraph_audit

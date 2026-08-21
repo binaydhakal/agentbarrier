@@ -88,10 +88,11 @@ Release gates:
 - forged, replayed, expired, and unauthorized Slack requests are rejected.
 - limits remain atomic under concurrent workers and the emergency pause fails closed.
 
-The main branch now contains the first production-control slice: durable scoped emergency pauses,
-atomic fixed-window action and integer-value budgets, CLI operations, control receipt-chain
-verification, unknown-outcome reservation retention, proven-not-committed release, cross-process
-tests, and a clean-wheel lifecycle audit. Dashboard, PostgreSQL, Slack, and deployment work remain.
+The main branch now contains two production-control slices: durable scoped emergency pauses with
+atomic fixed-window action and integer-value budgets, and a server-rendered approval dashboard with
+opaque scoped sessions, identity-bound decisions, CSRF protection, browser isolation headers,
+responsive accessible markup, and a clean-wheel lifecycle audit. PostgreSQL, Slack, and deployment
+work remain.
 
 ## 1.0.0 — stable production contract
 

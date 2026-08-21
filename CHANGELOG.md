@@ -15,6 +15,10 @@ All notable changes to this project will be documented in this file. The format 
   only after a proven `not_committed` reconciliation.
 - `agentbarrier controls` pause, resume, limit configuration, disable, and status commands plus a
   clean-wheel control lifecycle audit.
+- Server-rendered approval dashboard with opaque in-memory reviewer sessions, read and decision
+  scopes, exact escaped action inspection, identity-bound decisions, CSRF and same-origin
+  enforcement, strict form parsing, browser isolation headers, responsive accessible layouts, safe
+  loopback defaults, secure-cookie deployment controls, and a clean-wheel approval audit.
 
 - Transport-neutral sync and async runtime execution APIs for dynamic tool dispatchers, MCP
   gateways, and framework integrations that cannot use a Python decorator.

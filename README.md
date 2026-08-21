@@ -42,7 +42,8 @@ using the current MCP 2026-07-28 protocol through its official Python SDK, an au
 approval API, and [durable signed webhooks](docs/webhooks.md) for approval and operations systems.
 The next production-control work is also available on the main branch: durable emergency pauses
 and atomic fixed-window action or integer-value limits enforced by the Python and MCP execution
-boundary.
+boundary, plus a server-rendered approval dashboard with scoped reviewer sessions and CSRF
+protection.
 
 > **Status:** early development. The public adapter contract is usable, but compatibility should
 > be pinned until the first stable release.
@@ -53,6 +54,8 @@ boundary.
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/mcp-gateway.md">MCP gateway</a>
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/approval-api.md">Approval API</a>
+  ·
+  <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/dashboard.md">Dashboard</a>
   ·
   <a href="https://github.com/binaydhakal/agentbarrier/blob/main/docs/webhooks.md">Webhooks</a>
   ·
@@ -163,6 +166,21 @@ the configured argument path or the `agentbarrier/idempotencyKey` MCP metadata f
 The same runtime database can be reviewed from the development authenticated HTTP service. It uses
 scoped bearer identities, takes the reviewer name from authentication rather than request data, and
 serves an OpenAPI 3.1 contract. See the [approval API guide](docs/approval-api.md).
+
+People can review that database through the small server-rendered dashboard without shell access.
+It exchanges a scoped bearer credential for an opaque in-memory session, never stores the original
+credential in the browser or session store, requires CSRF validation for every decision, and uses
+the authenticated subject as the reviewer identity:
+
+```bash
+agentbarrier dashboard \
+  --db agentbarrier.db \
+  --auth-config approval-auth.json
+```
+
+The local service opens at `http://127.0.0.1:8788/dashboard/`. Remote use requires HTTPS, secure
+cookies, a fixed public origin, and trusted rate-limited ingress. See the
+[approval dashboard guide](docs/dashboard.md) for scopes, deployment, and session limitations.
 
 Durable outbound webhooks can notify a separate approval UI, queue, SIEM, or incident workflow.
 They use HMAC-SHA256 signatures, automatic and configured secret redaction, bounded retries,

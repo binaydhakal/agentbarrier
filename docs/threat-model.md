@@ -5,7 +5,8 @@ harness finds lifecycle-control failures using harmless sentinel effects. The Py
 enforces deterministic policy immediately before a real function crosses a consequential effect
 boundary. The MCP gateway applies the same runtime boundary before forwarding a tool call to an
 upstream server. The approval API binds decisions to authenticated reviewers, and signed webhooks
-export redacted runtime events to external systems.
+export redacted runtime events to external systems. The approval dashboard provides a
+server-rendered human review surface over the same authenticated runtime store.
 
 ## Security goals
 
@@ -43,6 +44,12 @@ For the approval API, the static auth file, entropy of the original bearer token
 local ingress, and service operator are trusted. Only token SHA-256 values are stored in the auth
 file. Because an unsalted digest does not protect a weak token from offline guessing, operators must
 generate high-entropy random tokens and protect the digest file as credential material.
+
+For the approval dashboard, the same auth file and token entropy, the dashboard process, random
+session generation, system clock, configured public origin, TLS ingress, browser same-origin and
+cookie behavior, and human reviewer are trusted. The original bearer token is verified only at
+sign-in; the process then keeps an opaque session digest, identity, scopes, CSRF value, and expiry
+in memory.
 
 For outbound webhooks, endpoint configuration, environment-provided signing secrets, worker network
 access, system time, HTTP client, and receiver verification are trusted. Endpoint URLs are operator
@@ -113,6 +120,17 @@ command, URL, API token, or network route remains available to the agent.
 - The API uses bearer headers rather than cookies, emits no permissive cross-origin headers, limits
   decision bodies, and returns no-store responses. It still requires TLS or a trusted local reverse
   proxy whenever traffic leaves loopback.
+- The dashboard requires `actions:read` at sign-in and independently enforces `actions:decide` on
+  every decision. Every state-changing form requires a random CSRF value; supplied browser origin
+  metadata must match the configured public origin. Responses use no-store caching, a restrictive
+  content security policy, frame denial, and same-origin isolation headers.
+- Dashboard sessions are process-local and retain the scopes present at sign-in. Auth-file changes
+  do not immediately revoke an existing session; urgent revocation requires a process restart, and
+  deployments should choose a short session TTL. This release supports one dashboard process, not
+  a load-balanced session cluster.
+- Action arguments, stored results, subjects, and decision reasons are intentionally visible to an
+  authorized reviewer and must be treated as sensitive at the browser, proxy, logs, screenshots,
+  and endpoint device. HTML escaping limits markup injection but does not make the data non-secret.
 - Webhook bodies automatically redact common credential-shaped argument keys and configured dotted
   paths, omit business idempotency keys and execution results, and are signed over exact bytes.
   Application-specific sensitive paths remain an operator responsibility; receipt actors and
@@ -158,7 +176,9 @@ AgentBarrier does not:
 - stop code that bypasses the protected function wrapper;
 - stop an MCP client that can bypass the gateway and call the upstream server directly;
 - provide an identity provider, token rotation service, or TLS termination for the approval API or
-  MCP gateway;
+  approval dashboard, or MCP gateway;
+- provide centralized dashboard sessions, immediate session revocation, single sign-on,
+  organization roles, or separation-of-duty enforcement;
 - safely resume interactive MCP `InputRequiredResult` rounds after an execution claim;
 - make an external webhook receiver trustworthy, available, or exactly once;
 - invent a reliable business idempotency key from a JSON-RPC request ID;

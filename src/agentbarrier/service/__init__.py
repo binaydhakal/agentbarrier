@@ -10,12 +10,22 @@ from agentbarrier.service.auth import (
     StaticBearerAuth,
     hash_bearer_token,
 )
+from agentbarrier.service.dashboard import (
+    ApprovalDashboard,
+    DashboardSession,
+    DashboardSessionStore,
+    create_dashboard_app,
+)
 
 __all__ = [
     "ALL_SERVICE_SCOPES",
     "ApprovalAPI",
+    "ApprovalDashboard",
+    "DashboardSession",
+    "DashboardSessionStore",
     "Principal",
     "StaticBearerAuth",
     "create_approval_app",
+    "create_dashboard_app",
     "hash_bearer_token",
 ]
