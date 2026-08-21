@@ -82,7 +82,7 @@ def test_approval_api_readiness_openapi_and_security_headers(tmp_path: Path) -> 
     assert ready.status_code == 200
     assert ready.json() == {
         "status": "ready",
-        "schema_version": "3",
+        "schema_version": "4",
         "version": __version__,
     }
     assert ready.headers["x-request-id"] == "request-123"

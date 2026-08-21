@@ -10,10 +10,13 @@ import pytest
 from agentbarrier.errors import (
     ActionBindingError,
     ActionInProgress,
+    ActionLimitExceeded,
+    ActionLimitValueError,
     ActionOutcomeUnknown,
     ApprovalExpired,
     ApprovalRejected,
     ApprovalRequired,
+    EmergencyPauseActive,
     InvalidActionState,
     PolicyDenied,
 )
@@ -45,6 +48,24 @@ def _claim_in_subprocess(
             outcome = store.claim(action_id, request_digest=request_digest).outcome.value
         except ActionInProgress:
             outcome = "in_progress"
+    results.put(outcome)  # type: ignore[attr-defined]
+
+
+def _claim_limited_in_subprocess(
+    path: Path,
+    action_id: str,
+    request_digest: str,
+    ready: object,
+    gate: object,
+    results: object,
+) -> None:
+    ready.put(True)  # type: ignore[attr-defined]
+    gate.wait(10)  # type: ignore[attr-defined]
+    with SQLiteRuntimeStore(path) as store:
+        try:
+            outcome = store.claim(action_id, request_digest=request_digest).outcome.value
+        except ActionLimitExceeded:
+            outcome = "limited"
     results.put(outcome)  # type: ignore[attr-defined]
 
 
@@ -434,6 +455,319 @@ def test_subprocess_exit_after_claim_expires_to_unknown(tmp_path: Path) -> None:
         assert abandoned.error == "ExecutionLeaseExpired"
 
 
+def test_emergency_pause_blocks_claim_until_exact_scope_is_cleared(tmp_path: Path) -> None:
+    clock = Clock()
+    with SQLiteRuntimeStore(tmp_path / "runtime.db", clock_ns=clock) as store:
+        request = make_request(clock)
+        action = store.submit(request, PolicyDecision(PolicyEffect.ALLOW, "safe", "1"))
+        pause = store.set_pause(
+            namespace="billing",
+            tool_name="payments.refund",
+            paused_by="on-call",
+            reason="provider incident",
+        )
+
+        assert pause.namespace == "billing"
+        assert pause.tool_name == "payments.refund"
+        with pytest.raises(EmergencyPauseActive, match="provider incident") as captured:
+            store.claim(action.action_id, request_digest=request.request_digest)
+        assert captured.value.scope == ('{"namespace":"billing","tool_name":"payments.refund"}')
+        assert store.get_action(action.action_id).status is RuntimeStatus.APPROVED
+        assert store.receipts(action_id=action.action_id)[-1].event.value == (
+            "emergency_pause_blocked"
+        )
+        assert store.verify_receipt_chain()
+        assert store.verify_control_receipt_chain()
+
+        assert not store.clear_pause(
+            namespace="other",
+            tool_name="payments.refund",
+            resumed_by="on-call",
+            reason="wrong scope",
+        )
+        assert store.clear_pause(
+            namespace="billing",
+            tool_name="payments.refund",
+            resumed_by="on-call",
+            reason="provider recovered",
+        )
+        assert store.list_pauses() == ()
+        assert (
+            store.claim(action.action_id, request_digest=request.request_digest).outcome
+            is ClaimOutcome.EXECUTE
+        )
+        assert [receipt.event.value for receipt in store.control_receipts()] == [
+            "emergency_pause_set",
+            "emergency_pause_cleared",
+        ]
+
+
+@pytest.mark.parametrize(
+    ("namespace", "tool_name", "blocked"),
+    [
+        (None, None, True),
+        ("billing", None, True),
+        (None, "payments.refund", True),
+        ("other", None, False),
+        (None, "payments.capture", False),
+    ],
+)
+def test_emergency_pause_scope_matching(
+    tmp_path: Path,
+    namespace: str | None,
+    tool_name: str | None,
+    blocked: bool,
+) -> None:
+    clock = Clock()
+    with SQLiteRuntimeStore(tmp_path / "runtime.db", clock_ns=clock) as store:
+        request = make_request(clock)
+        action = store.submit(request, PolicyDecision(PolicyEffect.ALLOW, "safe", "1"))
+        store.set_pause(
+            namespace=namespace,
+            tool_name=tool_name,
+            paused_by="operator",
+            reason="incident",
+        )
+        if blocked:
+            with pytest.raises(EmergencyPauseActive):
+                store.claim(action.action_id, request_digest=request.request_digest)
+        else:
+            assert (
+                store.claim(action.action_id, request_digest=request.request_digest).outcome
+                is ClaimOutcome.EXECUTE
+            )
+
+
+def test_atomic_limit_blocks_action_count_and_integer_value_budget(tmp_path: Path) -> None:
+    clock = Clock()
+    with SQLiteRuntimeStore(tmp_path / "runtime.db", clock_ns=clock) as store:
+        configured = store.configure_limit(
+            "refund-budget",
+            namespace="billing",
+            tool_name="payments.refund",
+            window_seconds=60,
+            max_actions=2,
+            value_argument="amount",
+            max_value=100,
+            updated_by="risk-team",
+            reason="limit refund blast radius",
+        )
+        assert configured.enabled
+        assert configured.max_actions == 2
+        assert configured.max_value == 100
+
+        first_request = make_request(clock, action_id="first", key="first", amount=60)
+        first = store.submit(
+            first_request,
+            PolicyDecision(PolicyEffect.ALLOW, "safe", "1"),
+        )
+        store.claim(first.action_id, request_digest=first_request.request_digest)
+        store.complete(first.action_id, request_digest=first_request.request_digest, result={})
+
+        second_request = make_request(clock, action_id="second", key="second", amount=41)
+        second = store.submit(
+            second_request,
+            PolicyDecision(PolicyEffect.ALLOW, "safe", "1"),
+        )
+        with pytest.raises(ActionLimitExceeded, match="amount") as captured:
+            store.claim(second.action_id, request_digest=second_request.request_digest)
+        assert captured.value.limit_id == "refund-budget"
+        assert captured.value.used == 60
+        assert captured.value.requested == 41
+        assert store.get_action(second.action_id).status is RuntimeStatus.APPROVED
+        assert store.limit_usage("refund-budget")[0].actions_used == 1
+        assert store.limit_usage("refund-budget")[0].value_used == 60
+        assert store.receipts(action_id=second.action_id)[-1].event.value == "limit_blocked"
+
+
+def test_value_limit_fails_closed_for_missing_or_invalid_cost(tmp_path: Path) -> None:
+    clock = Clock()
+    with SQLiteRuntimeStore(tmp_path / "runtime.db", clock_ns=clock) as store:
+        store.configure_limit(
+            "refund-value",
+            window_seconds=60,
+            value_argument="money.amount_minor",
+            max_value=100,
+            updated_by="risk-team",
+            reason="minor-unit budget",
+        )
+        request = RuntimeRequest(
+            action_id="invalid-value",
+            namespace="billing",
+            tool_name="payments.refund",
+            arguments={"money": {"amount_minor": "50"}},
+            idempotency_key="invalid-value",
+            policy_version="1",
+            created_at_ns=clock(),
+        )
+        action = store.submit(request, PolicyDecision(PolicyEffect.ALLOW, "safe", "1"))
+        with pytest.raises(ActionLimitValueError, match="non-negative integer"):
+            store.claim(action.action_id, request_digest=request.request_digest)
+        assert store.limit_usage("refund-value")[0].actions_used == 0
+
+
+def test_not_committed_reconciliation_releases_reserved_capacity(tmp_path: Path) -> None:
+    clock = Clock()
+    with SQLiteRuntimeStore(tmp_path / "runtime.db", clock_ns=clock) as store:
+        store.configure_limit(
+            "refund-value",
+            window_seconds=60,
+            value_argument="amount",
+            max_value=100,
+            updated_by="risk-team",
+            reason="refund budget",
+        )
+        first_request = make_request(clock, action_id="uncertain", key="uncertain", amount=80)
+        first = store.submit(first_request, approval())
+        store.decide(first.action_id, Decision.APPROVE, decided_by="alice")
+        store.claim(first.action_id, request_digest=first_request.request_digest)
+        store.mark_unknown(
+            first.action_id,
+            request_digest=first_request.request_digest,
+            error="TimeoutError",
+        )
+
+        second_request = make_request(clock, action_id="next", key="next", amount=30)
+        second = store.submit(
+            second_request,
+            PolicyDecision(PolicyEffect.ALLOW, "safe", "1"),
+        )
+        with pytest.raises(ActionLimitExceeded):
+            store.claim(second.action_id, request_digest=second_request.request_digest)
+
+        store.reconcile(
+            first.action_id,
+            RuntimeReconciliation.NOT_COMMITTED,
+            resolved_by="payment-ledger",
+            reason="transaction is absent",
+        )
+        usage = store.limit_usage("refund-value")[0]
+        assert usage.actions_used == 0
+        assert usage.value_used == 0
+        assert (
+            store.claim(second.action_id, request_digest=second_request.request_digest).outcome
+            is ClaimOutcome.EXECUTE
+        )
+
+
+def test_limit_window_resets_without_erasing_previous_usage(tmp_path: Path) -> None:
+    clock = Clock()
+    with SQLiteRuntimeStore(tmp_path / "runtime.db", clock_ns=clock) as store:
+        store.configure_limit(
+            "one-per-minute",
+            window_seconds=60,
+            max_actions=1,
+            updated_by="operator",
+            reason="slow rollout",
+        )
+        first_request = make_request(clock, action_id="first", key="first")
+        first = store.submit(
+            first_request,
+            PolicyDecision(PolicyEffect.ALLOW, "safe", "1"),
+        )
+        store.claim(first.action_id, request_digest=first_request.request_digest)
+        store.complete(first.action_id, request_digest=first_request.request_digest, result={})
+
+        second_request = make_request(clock, action_id="second", key="second")
+        second = store.submit(
+            second_request,
+            PolicyDecision(PolicyEffect.ALLOW, "safe", "1"),
+        )
+        with pytest.raises(ActionLimitExceeded):
+            store.claim(second.action_id, request_digest=second_request.request_digest)
+        clock.advance(60)
+        assert (
+            store.claim(second.action_id, request_digest=second_request.request_digest).outcome
+            is ClaimOutcome.EXECUTE
+        )
+
+
+def test_limit_is_atomic_across_concurrent_processes(tmp_path: Path) -> None:
+    path = tmp_path / "runtime.db"
+    with SQLiteRuntimeStore(path) as store:
+        store.configure_limit(
+            "one-at-a-time",
+            window_seconds=60,
+            max_actions=1,
+            updated_by="operator",
+            reason="concurrency proof",
+        )
+        requests = [
+            RuntimeRequest(
+                action_id=f"action-{index}",
+                namespace="billing",
+                tool_name="payments.refund",
+                arguments={"amount": 1},
+                idempotency_key=f"key-{index}",
+                policy_version="1",
+                created_at_ns=time.time_ns(),
+            )
+            for index in range(2)
+        ]
+        actions = [
+            store.submit(request, PolicyDecision(PolicyEffect.ALLOW, "safe", "1"))
+            for request in requests
+        ]
+
+    context = multiprocessing.get_context("spawn")
+    ready = context.Queue()
+    gate = context.Event()
+    results = context.Queue()
+    processes = [
+        context.Process(
+            target=_claim_limited_in_subprocess,
+            args=(path, action.action_id, request.request_digest, ready, gate, results),
+        )
+        for action, request in zip(actions, requests, strict=True)
+    ]
+    for process in processes:
+        process.start()
+    assert ready.get(timeout=10) is True
+    assert ready.get(timeout=10) is True
+    gate.set()
+    for process in processes:
+        process.join(timeout=10)
+        assert process.exitcode == 0
+    assert sorted([results.get(timeout=2), results.get(timeout=2)]) == ["execute", "limited"]
+
+
+def test_store_validates_control_configuration_and_detects_tampering(tmp_path: Path) -> None:
+    path = tmp_path / "runtime.db"
+    with SQLiteRuntimeStore(path) as store:
+        with pytest.raises(ValueError, match="at least one"):
+            store.configure_limit(
+                "empty",
+                window_seconds=60,
+                updated_by="operator",
+                reason="invalid",
+            )
+        with pytest.raises(ValueError, match="together"):
+            store.configure_limit(
+                "mismatch",
+                window_seconds=60,
+                max_value=10,
+                updated_by="operator",
+                reason="invalid",
+            )
+        with pytest.raises(ValueError, match="positive integer"):
+            store.configure_limit(
+                "bad-count",
+                window_seconds=60,
+                max_actions=0,
+                updated_by="operator",
+                reason="invalid",
+            )
+        store.set_pause(paused_by="operator", reason="incident")
+        assert store.verify_control_receipt_chain()
+        connection = sqlite3.connect(path)
+        connection.execute(
+            "UPDATE runtime_control_receipts SET detail = 'tampered' WHERE sequence = 1"
+        )
+        connection.commit()
+        connection.close()
+        assert not store.verify_control_receipt_chain()
+
+
 def test_store_validates_decisions_transitions_and_unknown_actions(tmp_path: Path) -> None:
     clock = Clock()
     with SQLiteRuntimeStore(tmp_path / "runtime.db", clock_ns=clock) as store:
@@ -474,7 +808,7 @@ def test_store_writes_consistent_non_overwriting_backup(tmp_path: Path) -> None:
     with SQLiteRuntimeStore(path, clock_ns=clock) as store:
         request = make_request(clock)
         store.submit(request, approval())
-        assert store.schema_version == "3"
+        assert store.schema_version == "4"
         assert store.backup(backup_path) == backup_path
 
     assert backup_path.stat().st_mode & 0o777 == 0o600
@@ -501,6 +835,71 @@ def test_store_rejects_unknown_schema_version(tmp_path: Path) -> None:
 
     with pytest.raises(RuntimeError, match="unsupported"):
         SQLiteRuntimeStore(path)
+
+
+def test_store_migrates_v3_database_to_durable_controls(tmp_path: Path) -> None:
+    path = tmp_path / "v3.db"
+    connection = sqlite3.connect(path)
+    connection.execute("CREATE TABLE runtime_metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+    connection.execute("INSERT INTO runtime_metadata VALUES ('schema_version', '3')")
+    connection.execute(
+        """
+        CREATE TABLE runtime_actions (
+            action_id TEXT PRIMARY KEY,
+            namespace TEXT NOT NULL,
+            tool_name TEXT NOT NULL,
+            arguments_json TEXT NOT NULL,
+            idempotency_key TEXT NOT NULL,
+            request_digest TEXT NOT NULL,
+            policy_version TEXT NOT NULL,
+            policy_rule TEXT NOT NULL,
+            policy_effect TEXT NOT NULL,
+            status TEXT NOT NULL,
+            created_at_ns INTEGER NOT NULL,
+            updated_at_ns INTEGER NOT NULL,
+            expires_at_ns INTEGER,
+            approval_ttl_ns INTEGER,
+            execution_lease_expires_at_ns INTEGER,
+            result_json TEXT,
+            error TEXT,
+            decided_by TEXT,
+            decision_reason TEXT,
+            UNIQUE (namespace, tool_name, idempotency_key)
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE runtime_receipts (
+            sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+            action_id TEXT NOT NULL,
+            event TEXT NOT NULL,
+            timestamp_ns INTEGER NOT NULL,
+            request_digest TEXT NOT NULL,
+            actor TEXT,
+            detail TEXT,
+            previous_hash TEXT,
+            receipt_hash TEXT NOT NULL,
+            FOREIGN KEY (action_id) REFERENCES runtime_actions(action_id)
+        )
+        """
+    )
+    connection.commit()
+    connection.close()
+
+    with SQLiteRuntimeStore(path) as store:
+        assert store.schema_version == "4"
+        store.set_pause(paused_by="operator", reason="migration check")
+        store.configure_limit(
+            "migration-limit",
+            window_seconds=60,
+            max_actions=1,
+            updated_by="operator",
+            reason="migration check",
+        )
+        assert len(store.list_pauses()) == 1
+        assert len(store.list_limits()) == 1
+        assert store.verify_control_receipt_chain()
 
 
 @pytest.mark.parametrize("lease", [0, -1, float("nan"), float("inf"), 1e-12])
@@ -572,4 +971,4 @@ def test_store_migrates_v1_and_fails_closed_for_legacy_execution(tmp_path: Path)
             metadata = migrated.execute(
                 "SELECT value FROM runtime_metadata WHERE key = 'schema_version'"
             ).fetchone()
-        assert metadata == ("3",)
+        assert metadata == ("4",)

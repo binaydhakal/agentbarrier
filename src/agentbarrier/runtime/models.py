@@ -51,6 +51,17 @@ class RuntimeEvent(str, Enum):
     RECONCILIATION_COMMITTED = "reconciliation_committed"
     RECONCILIATION_NOT_COMMITTED = "reconciliation_not_committed"
     RESULT_REPLAYED = "result_replayed"
+    EMERGENCY_PAUSE_BLOCKED = "emergency_pause_blocked"
+    LIMIT_BLOCKED = "limit_blocked"
+
+
+class RuntimeControlEvent(str, Enum):
+    """Integrity-linked operator changes to runtime safety controls."""
+
+    EMERGENCY_PAUSE_SET = "emergency_pause_set"
+    EMERGENCY_PAUSE_CLEARED = "emergency_pause_cleared"
+    LIMIT_CONFIGURED = "limit_configured"
+    LIMIT_DISABLED = "limit_disabled"
 
 
 class RuntimeReconciliation(str, Enum):
@@ -263,3 +274,55 @@ class ExecutionClaim:
     outcome: ClaimOutcome
     action: RuntimeAction
     result: JsonValue = None
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimePause:
+    """One active emergency pause scope."""
+
+    namespace: str | None
+    tool_name: str | None
+    paused_at_ns: int
+    paused_by: str
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeLimit:
+    """One fixed-window execution limit enforced at the claim boundary."""
+
+    limit_id: str
+    namespace: str | None
+    tool_name: str | None
+    window_ns: int
+    max_actions: int | None
+    value_argument: str | None
+    max_value: int | None
+    enabled: bool
+    updated_at_ns: int
+    updated_by: str
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeLimitUsage:
+    """Current fixed-window usage for one configured execution limit."""
+
+    limit_id: str
+    window_started_at_ns: int
+    actions_used: int
+    value_used: int
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeControlReceipt:
+    """One integrity-linked operator change to runtime safety controls."""
+
+    sequence: int
+    event: RuntimeControlEvent
+    timestamp_ns: int
+    actor: str
+    scope: str
+    detail: str
+    previous_hash: str | None
+    receipt_hash: str

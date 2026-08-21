@@ -40,6 +40,9 @@ The main branch is developing 0.5.0, which adds a deployable
 [MCP policy gateway](https://github.com/binaydhakal/agentbarrier/blob/main/docs/mcp-gateway.md)
 using the current MCP 2026-07-28 protocol through its official Python SDK, an authenticated
 approval API, and [durable signed webhooks](docs/webhooks.md) for approval and operations systems.
+The next production-control work is also available on the main branch: durable emergency pauses
+and atomic fixed-window action or integer-value limits enforced by the Python and MCP execution
+boundary.
 
 > **Status:** early development. The public adapter contract is usable, but compatibility should
 > be pinned until the first stable release.
@@ -78,6 +81,48 @@ approval API, and [durable signed webhooks](docs/webhooks.md) for approval and o
 
 The model can propose the action, but it cannot approve its own request, change the reviewed
 arguments afterward, or cause the same approved operation to execute twice through a retry.
+
+## Stop or limit live agent actions
+
+Use the same runtime database as the protected application or MCP gateway. A global pause takes
+effect at the next execution claim; scope it with `--namespace`, `--tool`, or both when only one
+agent service or capability is affected.
+
+```bash
+agentbarrier controls pause \
+  --db agentbarrier.db \
+  --paused-by on-call \
+  --reason "payment provider incident"
+
+agentbarrier controls resume \
+  --db agentbarrier.db \
+  --resumed-by on-call \
+  --reason "provider recovered"
+```
+
+Limits reduce blast radius without requiring a person to review every low-risk call. This example
+allows at most 20 refunds or 50,000 cents of refund value in each five-minute window, whichever is
+reached first:
+
+```bash
+agentbarrier controls limit-set refund-budget \
+  --db agentbarrier.db \
+  --namespace support-agent \
+  --tool payments.refund \
+  --window-seconds 300 \
+  --max-actions 20 \
+  --value-argument amount_cents \
+  --max-value 50000 \
+  --updated-by risk-team \
+  --reason "limit automated refund exposure"
+
+agentbarrier controls status --db agentbarrier.db --json
+```
+
+Capacity is reserved atomically only when an approved action is about to execute. An uncertain
+outcome keeps its reservation; it is released only when downstream reconciliation proves the
+effect did not commit. Value budgets intentionally require non-negative integer units such as
+cents, tokens, rows, or messages, avoiding ambiguous floating-point money calculations.
 
 ## Run as an MCP safety gateway
 

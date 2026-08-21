@@ -8,6 +8,14 @@ All notable changes to this project will be documented in this file. The format 
 
 ### Added
 
+- Durable emergency pauses with global, namespace, tool, and combined scopes, enforced atomically
+  at the final execution claim and recorded in both action and operator-control receipt chains.
+- Fixed-window action and non-negative integer-value limits with atomic cross-process capacity
+  reservation, fail-closed value extraction, retained capacity for unknown outcomes, and release
+  only after a proven `not_committed` reconciliation.
+- `agentbarrier controls` pause, resume, limit configuration, disable, and status commands plus a
+  clean-wheel control lifecycle audit.
+
 - Transport-neutral sync and async runtime execution APIs for dynamic tool dispatchers, MCP
   gateways, and framework integrations that cannot use a Python decorator.
 - MCP v2 gateway foundation using the current 2026-07-28 protocol through the official SDK, with

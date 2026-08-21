@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from tools.audit_runtime_controls_wheel import run_audit as run_controls_audit
 from tools.audit_runtime_wheel import run_audit
 
 
@@ -17,6 +18,19 @@ def test_runtime_wheel_audit_executes_effect_once(tmp_path: Path) -> None:
         "execution_started",
         "execution_succeeded",
         "result_replayed",
+    ]
+
+
+def test_runtime_controls_wheel_audit_blocks_pause_and_limit(tmp_path: Path) -> None:
+    result = run_controls_audit(tmp_path)
+    assert result["status"] == "passed"
+    assert result["effect_count"] == 1
+    assert result["blocked_limit"] == "one-refund-per-window"
+    assert result["usage"] == {"actions": 1, "value": 2_500}
+    assert result["control_events"] == [
+        "limit_configured",
+        "emergency_pause_set",
+        "emergency_pause_cleared",
     ]
 
 

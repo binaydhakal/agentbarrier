@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
-from agentbarrier.runtime.models import RuntimeAction, RuntimeReceipt
+from agentbarrier.runtime.models import (
+    RuntimeAction,
+    RuntimeControlReceipt,
+    RuntimeLimit,
+    RuntimeLimitUsage,
+    RuntimePause,
+    RuntimeReceipt,
+)
 
 
 def action_payload(action: RuntimeAction) -> dict[str, object]:
@@ -42,6 +49,62 @@ def receipt_payload(receipt: RuntimeReceipt) -> dict[str, object]:
         "timestamp_ns": receipt.timestamp_ns,
         "request_digest": receipt.request_digest,
         "actor": receipt.actor,
+        "detail": receipt.detail,
+        "previous_hash": receipt.previous_hash,
+        "receipt_hash": receipt.receipt_hash,
+    }
+
+
+def pause_payload(pause: RuntimePause) -> dict[str, object]:
+    """Serialize one active emergency pause."""
+
+    return {
+        "namespace": pause.namespace,
+        "tool_name": pause.tool_name,
+        "paused_at_ns": pause.paused_at_ns,
+        "paused_by": pause.paused_by,
+        "reason": pause.reason,
+    }
+
+
+def limit_payload(limit: RuntimeLimit) -> dict[str, object]:
+    """Serialize one durable execution-limit definition."""
+
+    return {
+        "limit_id": limit.limit_id,
+        "namespace": limit.namespace,
+        "tool_name": limit.tool_name,
+        "window_ns": limit.window_ns,
+        "max_actions": limit.max_actions,
+        "value_argument": limit.value_argument,
+        "max_value": limit.max_value,
+        "enabled": limit.enabled,
+        "updated_at_ns": limit.updated_at_ns,
+        "updated_by": limit.updated_by,
+        "reason": limit.reason,
+    }
+
+
+def limit_usage_payload(usage: RuntimeLimitUsage) -> dict[str, object]:
+    """Serialize current usage for one execution limit."""
+
+    return {
+        "limit_id": usage.limit_id,
+        "window_started_at_ns": usage.window_started_at_ns,
+        "actions_used": usage.actions_used,
+        "value_used": usage.value_used,
+    }
+
+
+def control_receipt_payload(receipt: RuntimeControlReceipt) -> dict[str, object]:
+    """Serialize one integrity-linked operator-control receipt."""
+
+    return {
+        "sequence": receipt.sequence,
+        "event": receipt.event.value,
+        "timestamp_ns": receipt.timestamp_ns,
+        "actor": receipt.actor,
+        "scope": receipt.scope,
         "detail": receipt.detail,
         "previous_hash": receipt.previous_hash,
         "receipt_hash": receipt.receipt_hash,

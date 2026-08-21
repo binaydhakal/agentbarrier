@@ -89,6 +89,69 @@ Receipts form one SHA-256 integrity chain covering policy decisions, human decis
 and replay. This detects accidental or unauthorized database edits; it is not a substitute for
 filesystem permissions, backups, or external signing.
 
+## Emergency pause and blast-radius limits
+
+Emergency pauses are durable database controls checked in the same immediate transaction that
+claims an approved action. They do not cancel an external effect that already started, but they
+prevent every matching action that has not crossed the claim boundary from starting.
+
+```bash
+# Pause one service namespace and tool.
+agentbarrier controls pause \
+  --db agentbarrier.db \
+  --namespace support-agent \
+  --tool payments.refund \
+  --paused-by on-call \
+  --reason "provider incident"
+
+# Clear exactly that pause scope.
+agentbarrier controls resume \
+  --db agentbarrier.db \
+  --namespace support-agent \
+  --tool payments.refund \
+  --resumed-by on-call \
+  --reason "provider recovered"
+```
+
+Omit both scope flags for a global pause. Supplying only `--namespace` pauses all tools in that
+service identity; supplying only `--tool` pauses that tool across namespaces. A blocked action
+remains `approved`, so it can be claimed after the exact pause is cleared without changing its
+reviewed arguments or policy binding.
+
+Configure one or both fixed-window ceilings:
+
+```bash
+agentbarrier controls limit-set refund-budget \
+  --db agentbarrier.db \
+  --namespace support-agent \
+  --tool payments.refund \
+  --window-seconds 300 \
+  --max-actions 20 \
+  --value-argument amount_cents \
+  --max-value 50000 \
+  --updated-by risk-team \
+  --reason "automated refund exposure"
+
+agentbarrier controls status --db agentbarrier.db
+agentbarrier controls limit-disable refund-budget \
+  --db agentbarrier.db \
+  --updated-by risk-team \
+  --reason "replaced by refund-budget-v2"
+```
+
+Windows are aligned fixed windows. All matching enabled limits must have capacity. Each successful
+claim atomically reserves one action plus the configured integer value; two processes cannot both
+consume the last unit. Use explicit integer units such as cents, tokens, rows, or messages.
+Missing, negative, boolean, floating-point, and string values fail closed rather than being
+coerced. Limit scope, window, and value path are immutable for a `limit_id`; disable the old limit
+and create a new identifier to change them.
+
+Capacity remains reserved for `succeeded`, `executing`, and `unknown` actions. A
+`not_committed` reconciliation releases the uncertain reservation because the downstream system
+has proven absence. A committed reconciliation retains it. Pause changes and limit configuration
+have their own integrity-linked control receipt chain, shown by `controls status` and `database
+status`.
+
 ## Manage the runtime database
 
 Opening a database automatically applies supported forward migrations in one transaction. For an

@@ -126,6 +126,12 @@ code can use these methods:
   outcome using evidence from the real downstream system.
 - `receipts(action_id=None)` returns ordered audit receipts.
 - `verify_receipt_chain()` verifies the global SHA-256 link and payload digest of every receipt.
+- `set_pause(...)`, `clear_pause(...)`, and `list_pauses()` manage durable global or scoped
+  emergency pauses.
+- `configure_limit(...)`, `disable_limit(...)`, `list_limits()`, and `limit_usage(...)` manage
+  atomic fixed-window action and non-negative integer-value limits.
+- `control_receipts()` and `verify_control_receipt_chain()` inspect integrity-linked operator
+  changes to pauses and limits.
 - `backup(destination)` writes a consistent, integrity-checked, user-readable-only backup and
   refuses to replace an existing file.
 - `schema_version` returns the migrated schema version.
@@ -160,6 +166,10 @@ All runtime exceptions derive from `RuntimeBarrierError` in `agentbarrier.errors
   and `ActionOutcomeUnknown` include the current `RuntimeAction` as `.action`.
 - `ActionBindingError` means an idempotency key or execution digest was reused with different bound
   data.
+- `EmergencyPauseActive` means a matching durable pause blocked the action before execution.
+- `ActionLimitExceeded` reports the exact limit, current usage, requested units, and maximum.
+- `ActionLimitValueError` means a value budget could not find a non-negative integer at its
+  configured argument path and failed closed.
 - `FrameworkControlSignalError` means a claimed framework tool emitted a retry, failure, approval,
   or deferral signal that could otherwise trigger unsafe model-visible recovery. The durable action
   remains `unknown` and requires reconciliation.

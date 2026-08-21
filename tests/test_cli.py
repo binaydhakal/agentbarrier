@@ -489,6 +489,151 @@ def test_runtime_cli_requires_reconciliation_result(tmp_path: Path) -> None:
     assert exc.value.code == 2
 
 
+def test_runtime_controls_cli_manages_pause_limit_and_audit_status(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    path = tmp_path / "runtime.db"
+    assert (
+        main(
+            [
+                "controls",
+                "pause",
+                "--db",
+                str(path),
+                "--namespace",
+                "billing",
+                "--tool",
+                "payments.refund",
+                "--paused-by",
+                "on-call",
+                "--reason",
+                "provider incident",
+            ]
+        )
+        == 0
+    )
+    assert "paused namespace=billing tool=payments.refund" in capsys.readouterr().out
+
+    assert (
+        main(
+            [
+                "controls",
+                "limit-set",
+                "refund-budget",
+                "--db",
+                str(path),
+                "--namespace",
+                "billing",
+                "--tool",
+                "payments.refund",
+                "--window-seconds",
+                "60",
+                "--max-actions",
+                "5",
+                "--value-argument",
+                "amount_cents",
+                "--max-value",
+                "10000",
+                "--updated-by",
+                "risk-team",
+                "--reason",
+                "refund blast radius",
+            ]
+        )
+        == 0
+    )
+    assert "configured limit refund-budget" in capsys.readouterr().out
+
+    assert main(["controls", "status", "--db", str(path), "--json"]) == 0
+    status = json.loads(capsys.readouterr().out)
+    assert status["control_chain_valid"] is True
+    assert status["pauses"][0]["paused_by"] == "on-call"
+    assert status["limits"][0]["limit_id"] == "refund-budget"
+    assert status["usage"][0]["actions_used"] == 0
+    assert [receipt["event"] for receipt in status["control_receipts"]] == [
+        "emergency_pause_set",
+        "limit_configured",
+    ]
+
+    assert (
+        main(
+            [
+                "controls",
+                "limit-disable",
+                "refund-budget",
+                "--db",
+                str(path),
+                "--updated-by",
+                "risk-team",
+                "--reason",
+                "rollout complete",
+            ]
+        )
+        == 0
+    )
+    assert "disabled limit refund-budget" in capsys.readouterr().out
+    assert (
+        main(
+            [
+                "controls",
+                "resume",
+                "--db",
+                str(path),
+                "--namespace",
+                "billing",
+                "--tool",
+                "payments.refund",
+                "--resumed-by",
+                "on-call",
+                "--reason",
+                "provider recovered",
+            ]
+        )
+        == 0
+    )
+    assert "resumed namespace=billing tool=payments.refund" in capsys.readouterr().out
+    with SQLiteRuntimeStore(path) as store:
+        assert store.list_pauses() == ()
+        assert store.list_limits()[0].enabled is False
+        assert store.verify_control_receipt_chain()
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ["controls", "status"],
+        [
+            "controls",
+            "resume",
+            "--resumed-by",
+            "on-call",
+            "--reason",
+            "recovered",
+        ],
+        [
+            "controls",
+            "limit-disable",
+            "missing-limit",
+            "--updated-by",
+            "risk-team",
+            "--reason",
+            "retired",
+        ],
+    ],
+)
+def test_runtime_control_reads_reject_missing_database(
+    tmp_path: Path,
+    arguments: list[str],
+) -> None:
+    path = tmp_path / "missing.db"
+    arguments.extend(["--db", str(path)])
+    with pytest.raises(SystemExit) as exc:
+        main(arguments)
+    assert exc.value.code == 2
+    assert not path.exists()
+
+
 def test_runtime_database_cli_reports_migrates_and_backs_up(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -498,14 +643,18 @@ def test_runtime_database_cli_reports_migrates_and_backs_up(
     assert main(["database", "status", "--db", str(path), "--json"]) == 0
     status = json.loads(capsys.readouterr().out)
     assert status == {
+        "active_pauses": 0,
         "actions": 1,
+        "control_receipt_chain_valid": True,
+        "control_receipts": 0,
+        "limits": 0,
         "receipt_chain_valid": True,
         "receipts": 1,
-        "schema_version": "3",
+        "schema_version": "4",
     }
 
     assert main(["database", "migrate", "--db", str(path)]) == 0
-    assert "schema version 3" in capsys.readouterr().out
+    assert "schema version 4" in capsys.readouterr().out
 
     backup = tmp_path / "runtime-backup.db"
     assert main(["database", "backup", "--db", str(path), "--output", str(backup)]) == 0

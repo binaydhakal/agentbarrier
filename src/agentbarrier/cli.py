@@ -30,7 +30,14 @@ from agentbarrier.models import Decision as RuntimeDecision
 from agentbarrier.reporters import render_console, write_json, write_junit, write_sarif
 from agentbarrier.runner import RunnerOptions, SuiteRunner
 from agentbarrier.runtime.models import RuntimeReconciliation, RuntimeStatus
-from agentbarrier.runtime.serialization import action_payload, receipt_payload
+from agentbarrier.runtime.serialization import (
+    action_payload,
+    control_receipt_payload,
+    limit_payload,
+    limit_usage_payload,
+    pause_payload,
+    receipt_payload,
+)
 from agentbarrier.runtime.store import SQLiteRuntimeStore
 from agentbarrier.scenarios import DEFAULT_SCENARIOS
 
@@ -40,7 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser(
         prog="agentbarrier",
-        description="Verify control-plane safety guarantees for AI-agent tools.",
+        description="Enforce and verify transaction safety for AI-agent tools.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -152,6 +159,62 @@ def build_parser() -> argparse.ArgumentParser:
     audit.add_argument("--action-id", help="include receipts for one action")
     audit.add_argument("--json", action="store_true", help="write JSON to stdout")
     audit.set_defaults(handler=_run_runtime_audit)
+
+    controls = commands.add_parser(
+        "controls",
+        help="manage emergency pauses and atomic execution limits",
+    )
+    control_commands = controls.add_subparsers(dest="control_command", required=True)
+
+    control_status = control_commands.add_parser(
+        "status",
+        help="show active pauses, limits, usage, and control-audit integrity",
+    )
+    _add_runtime_db_option(control_status)
+    control_status.add_argument("--json", action="store_true", help="write JSON to stdout")
+    control_status.set_defaults(handler=_run_controls_status)
+
+    pause = control_commands.add_parser("pause", help="activate an emergency pause")
+    _add_runtime_db_option(pause)
+    _add_control_scope_options(pause)
+    pause.add_argument("--paused-by", required=True, help="operator identity")
+    pause.add_argument("--reason", required=True, help="incident or change reason")
+    pause.set_defaults(handler=_run_controls_pause)
+
+    resume = control_commands.add_parser("resume", help="clear one exact emergency pause")
+    _add_runtime_db_option(resume)
+    _add_control_scope_options(resume)
+    resume.add_argument("--resumed-by", required=True, help="operator identity")
+    resume.add_argument("--reason", required=True, help="recovery or change reason")
+    resume.set_defaults(handler=_run_controls_resume)
+
+    limit_set = control_commands.add_parser(
+        "limit-set",
+        help="create or update a fixed-window execution limit",
+    )
+    limit_set.add_argument("limit_id")
+    _add_runtime_db_option(limit_set)
+    _add_control_scope_options(limit_set)
+    limit_set.add_argument("--window-seconds", type=float, required=True)
+    limit_set.add_argument("--max-actions", type=int)
+    limit_set.add_argument(
+        "--value-argument",
+        help="dot-separated non-negative integer argument, such as amount_cents",
+    )
+    limit_set.add_argument("--max-value", type=int)
+    limit_set.add_argument("--updated-by", required=True, help="operator identity")
+    limit_set.add_argument("--reason", required=True, help="risk-control reason")
+    limit_set.set_defaults(handler=_run_controls_limit_set)
+
+    limit_disable = control_commands.add_parser(
+        "limit-disable",
+        help="disable a limit without deleting its usage history",
+    )
+    limit_disable.add_argument("limit_id")
+    _add_runtime_db_option(limit_disable)
+    limit_disable.add_argument("--updated-by", required=True, help="operator identity")
+    limit_disable.add_argument("--reason", required=True, help="change reason")
+    limit_disable.set_defaults(handler=_run_controls_limit_disable)
 
     database = commands.add_parser("database", help="inspect, migrate, and back up runtime state")
     database_commands = database.add_subparsers(dest="database_command", required=True)
@@ -270,6 +333,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _add_runtime_db_option(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--db", required=True, metavar="PATH", help="runtime SQLite database")
+
+
+def _add_control_scope_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--namespace", help="limit the control to one service namespace")
+    parser.add_argument("--tool", dest="tool_name", help="limit the control to one tool name")
 
 
 def _add_mcp_gateway_options(parser: argparse.ArgumentParser) -> None:
@@ -492,17 +560,127 @@ def _run_runtime_audit(arguments: argparse.Namespace) -> int:
     return 0 if chain_valid else 1
 
 
+def _run_controls_status(arguments: argparse.Namespace) -> int:
+    database_path = cast(str, arguments.db)
+    _require_existing_runtime_db(database_path)
+    with SQLiteRuntimeStore(database_path) as store:
+        pauses = store.list_pauses()
+        limits = store.list_limits()
+        usage = store.limit_usage()
+        receipts = store.control_receipts()
+        chain_valid = store.verify_control_receipt_chain()
+    payload = {
+        "control_chain_valid": chain_valid,
+        "control_receipts": [control_receipt_payload(receipt) for receipt in receipts],
+        "limits": [limit_payload(limit) for limit in limits],
+        "pauses": [pause_payload(pause) for pause in pauses],
+        "usage": [limit_usage_payload(item) for item in usage],
+    }
+    if arguments.json:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+    else:
+        print(f"Control receipt chain: {'valid' if chain_valid else 'INVALID'}")
+        print(f"Active pauses: {len(pauses)}")
+        for pause in pauses:
+            namespace = pause.namespace or "*"
+            tool_name = pause.tool_name or "*"
+            print(
+                f"  namespace={namespace} tool={tool_name} "
+                f"by={pause.paused_by} reason={pause.reason}"
+            )
+        print(f"Limits: {len(limits)}")
+        usage_by_id = {item.limit_id: item for item in usage}
+        for limit in limits:
+            current = usage_by_id[limit.limit_id]
+            state = "enabled" if limit.enabled else "disabled"
+            print(
+                f"  {limit.limit_id} {state} actions={current.actions_used} "
+                f"value={current.value_used}"
+            )
+    return 0 if chain_valid else 1
+
+
+def _run_controls_pause(arguments: argparse.Namespace) -> int:
+    with SQLiteRuntimeStore(cast(str, arguments.db)) as store:
+        pause = store.set_pause(
+            namespace=cast(str | None, arguments.namespace),
+            tool_name=cast(str | None, arguments.tool_name),
+            paused_by=cast(str, arguments.paused_by),
+            reason=cast(str, arguments.reason),
+        )
+    namespace = pause.namespace or "*"
+    tool_name = pause.tool_name or "*"
+    print(f"paused namespace={namespace} tool={tool_name}")
+    return 0
+
+
+def _run_controls_resume(arguments: argparse.Namespace) -> int:
+    namespace = cast(str | None, arguments.namespace)
+    tool_name = cast(str | None, arguments.tool_name)
+    database_path = cast(str, arguments.db)
+    _require_existing_runtime_db(database_path)
+    with SQLiteRuntimeStore(database_path) as store:
+        cleared = store.clear_pause(
+            namespace=namespace,
+            tool_name=tool_name,
+            resumed_by=cast(str, arguments.resumed_by),
+            reason=cast(str, arguments.reason),
+        )
+    rendered_namespace = namespace or "*"
+    rendered_tool = tool_name or "*"
+    if cleared:
+        print(f"resumed namespace={rendered_namespace} tool={rendered_tool}")
+    else:
+        print(f"no active pause for namespace={rendered_namespace} tool={rendered_tool}")
+    return 0
+
+
+def _run_controls_limit_set(arguments: argparse.Namespace) -> int:
+    with SQLiteRuntimeStore(cast(str, arguments.db)) as store:
+        limit = store.configure_limit(
+            cast(str, arguments.limit_id),
+            namespace=cast(str | None, arguments.namespace),
+            tool_name=cast(str | None, arguments.tool_name),
+            window_seconds=cast(float, arguments.window_seconds),
+            max_actions=cast(int | None, arguments.max_actions),
+            value_argument=cast(str | None, arguments.value_argument),
+            max_value=cast(int | None, arguments.max_value),
+            updated_by=cast(str, arguments.updated_by),
+            reason=cast(str, arguments.reason),
+        )
+    print(f"configured limit {limit.limit_id}")
+    return 0
+
+
+def _run_controls_limit_disable(arguments: argparse.Namespace) -> int:
+    database_path = cast(str, arguments.db)
+    _require_existing_runtime_db(database_path)
+    with SQLiteRuntimeStore(database_path) as store:
+        limit = store.disable_limit(
+            cast(str, arguments.limit_id),
+            updated_by=cast(str, arguments.updated_by),
+            reason=cast(str, arguments.reason),
+        )
+    print(f"disabled limit {limit.limit_id}")
+    return 0
+
+
 def _run_database_status(arguments: argparse.Namespace) -> int:
     database_path = cast(str, arguments.db)
     _require_existing_runtime_db(database_path)
     with SQLiteRuntimeStore(database_path) as store:
         actions = store.list_actions()
         receipts = store.receipts()
+        control_receipts = store.control_receipts()
         payload = {
             "schema_version": store.schema_version,
             "actions": len(actions),
             "receipts": len(receipts),
             "receipt_chain_valid": store.verify_receipt_chain(),
+            "active_pauses": len(store.list_pauses()),
+            "limits": len(store.list_limits()),
+            "control_receipts": len(control_receipts),
+            "control_receipt_chain_valid": store.verify_control_receipt_chain(),
         }
     if arguments.json:
         print(json.dumps(payload, indent=2, sort_keys=True))
@@ -511,7 +689,14 @@ def _run_database_status(arguments: argparse.Namespace) -> int:
         print(f"Actions: {payload['actions']}")
         print(f"Receipts: {payload['receipts']}")
         print(f"Receipt chain: {'valid' if payload['receipt_chain_valid'] else 'INVALID'}")
-    return 0 if payload["receipt_chain_valid"] else 1
+        print(f"Active pauses: {payload['active_pauses']}")
+        print(f"Limits: {payload['limits']}")
+        print(f"Control receipts: {payload['control_receipts']}")
+        print(
+            "Control receipt chain: "
+            f"{'valid' if payload['control_receipt_chain_valid'] else 'INVALID'}"
+        )
+    return 0 if payload["receipt_chain_valid"] and payload["control_receipt_chain_valid"] else 1
 
 
 def _run_database_migrate(arguments: argparse.Namespace) -> int:

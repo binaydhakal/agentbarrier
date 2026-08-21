@@ -75,7 +75,8 @@ timeouts are capped at 30 seconds and must remain shorter than the exclusive del
 
 Supported events are `policy_allowed`, `policy_denied`, `approval_requested`, `approved`,
 `rejected`, `expired`, `execution_started`, `execution_succeeded`, `execution_unknown`,
-`execution_abandoned`, `reconciliation_committed`, `reconciliation_not_committed`, and
+`execution_abandoned`, `emergency_pause_blocked`, `limit_blocked`,
+`reconciliation_committed`, `reconciliation_not_committed`, and
 `result_replayed`.
 
 An endpoint ID binds its URL, filters, redaction, retry policy, and starting mode to durable state.

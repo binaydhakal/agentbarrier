@@ -67,6 +67,16 @@ command, URL, API token, or network route remains available to the agent.
 - Canonical JSON and request digests prevent an approval from being reused with changed bound data.
 - SQLite immediate transactions serialize action creation, reviewer decisions, execution claims,
   reconciliation, and receipt insertion across processes.
+- Emergency pauses and every matching execution limit are checked inside the execution-claim
+  transaction. They stop work that has not started; they cannot revoke an effect that already
+  crossed the boundary. Operators must isolate database write access because anyone who can alter
+  the control tables can bypass or forge these controls.
+- Value limits require a non-negative integer at an operator-configured argument path. Deployments
+  must choose meaningful explicit units such as cents and ensure the downstream operation uses the
+  same unit. Fixed windows are not rolling windows and may permit bursts across a window boundary.
+- Unknown outcomes retain limit capacity because the effect may have committed. Capacity is
+  released only after explicit `not_committed` reconciliation; incorrect absence evidence can
+  therefore reopen capacity unsafely.
 - Execution leases expose abandoned claims. Expiry produces `unknown`, not a retry. A lease is not a
   distributed lock renewal protocol, so long-running tools must choose an appropriate duration and
   operators must verify that an old worker cannot still commit before reconciling as
@@ -74,7 +84,7 @@ command, URL, API token, or network route remains available to the agent.
 - Receipt hashes detect accidental edits and unsophisticated tampering. They are not signatures or
   message authentication codes. A process that can rewrite the database can recompute the entire
   chain.
-- The 0.4 CLI is a local single-operator interface. It records the supplied reviewer name but does
+- The local CLI is a single-operator interface. It records the supplied reviewer name but does
   not authenticate that identity or enforce separation of duties. Limit database and shell access
   at the operating-system boundary.
 - The database contains tool names, arguments, results, reviewer identities, reasons, and receipts.

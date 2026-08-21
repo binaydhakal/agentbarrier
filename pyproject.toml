@@ -29,6 +29,9 @@ keywords = [
   "ai-firewall",
   "guardrails",
   "idempotency",
+  "rate-limiting",
+  "kill-switch",
+  "blast-radius",
   "cancellation",
 ]
 classifiers = [

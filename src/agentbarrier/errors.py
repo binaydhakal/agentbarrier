@@ -118,3 +118,53 @@ class ActionBindingError(RuntimeBarrierError):
 
 class InvalidActionState(RuntimeBarrierError):
     """Raised when a runtime action cannot perform the requested state transition."""
+
+
+class EmergencyPauseActive(RuntimeActionError):
+    """Raised when an operator pause blocks an action at the execution boundary."""
+
+    def __init__(self, action: RuntimeAction, *, scope: str, reason: str) -> None:
+        super().__init__(
+            action,
+            f"action {action.action_id!r} is blocked by emergency pause {scope!r}: {reason}",
+        )
+        self.scope = scope
+        self.reason = reason
+
+
+class ActionLimitExceeded(RuntimeActionError):
+    """Raised when an action would exceed an atomic execution limit."""
+
+    def __init__(
+        self,
+        action: RuntimeAction,
+        *,
+        limit_id: str,
+        resource: str,
+        used: int,
+        requested: int,
+        maximum: int,
+    ) -> None:
+        super().__init__(
+            action,
+            f"action {action.action_id!r} would exceed {resource} limit {limit_id!r} "
+            f"({used} + {requested} > {maximum})",
+        )
+        self.limit_id = limit_id
+        self.resource = resource
+        self.used = used
+        self.requested = requested
+        self.maximum = maximum
+
+
+class ActionLimitValueError(RuntimeActionError):
+    """Raised when a configured value budget cannot safely price an action."""
+
+    def __init__(self, action: RuntimeAction, *, limit_id: str, value_argument: str) -> None:
+        super().__init__(
+            action,
+            f"action {action.action_id!r} has no non-negative integer at "
+            f"{value_argument!r} required by limit {limit_id!r}",
+        )
+        self.limit_id = limit_id
+        self.value_argument = value_argument
