@@ -1,0 +1,43 @@
+version: 1
+surfaces:
+  - name: framework-adapters
+    # A new file under adapters/ wires a brand-new agent framework into AgentBarrier's
+    # policy enforcement. Integrators using that framework gain a supported adapter
+    # they can import and start relying on; internal refactors of existing adapters stay silent.
+    paths: ["src/agentbarrier/adapters/**"]
+    detect: new_file
+    docs: ["docs/adapters.md"]
+
+  - name: approval-api-routes
+    # New route decorators inside the approval API expose new HTTP endpoints that
+    # external approval systems and operators can call. Editing existing handlers is silent;
+    # only a newly added route line matters to downstream integrators.
+    paths: ["src/agentbarrier/approval/**"]
+    detect: pattern
+    pattern: "@router\\.(?:get|post|put|delete)\\(\"([^\"]+)\""
+    docs: ["docs/approval-api.md"]
+
+  - name: mcp-gateway-routes
+    # New route decorators inside the MCP gateway expose new callable surface to any
+    # MCP client speaking the 2026-07-28 protocol. This is the boundary agent-side
+    # tool callers depend on, so only added route lines count.
+    paths: ["src/agentbarrier/mcp/**"]
+    detect: pattern
+    pattern: "@router\\.(?:get|post|put|delete)\\(\"([^\"]+)\""
+    docs: ["docs/mcp-gateway.md"]
+
+  - name: dashboard-routes
+    # New route decorators inside the dashboard implementation expose new pages or
+    # data endpoints that operators viewing the dashboard now depend on.
+    paths: ["src/agentbarrier/dashboard/**"]
+    detect: pattern
+    pattern: "@router\\.(?:get|post|put|delete)\\(\"([^\"]+)\""
+    docs: ["docs/dashboard.md"]
+
+  - name: cli-commands
+    # A newly added CLI subcommand (e.g. pause, resume, limits) is a new operational
+    # control that operators running agentbarrier from the shell can invoke; renaming
+    # or refactoring an existing command's internals is not a new capability.
+    paths: ["src/agentbarrier/cli/**"]
+    detect: pattern
+    pattern: "@cli\\.command\\(\"(\\w+)\"\\)"
