@@ -55,7 +55,7 @@ jobs:
           --markdown docs/compatibility.md
           --check
           --strict-missing
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: compatibility-python-${{ matrix.python-version }}
           path: build/compatibility/
@@ -104,7 +104,7 @@ jobs:
           --markdown docs/crewai-evaluation.md
           --check
           --strict-missing
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: crewai-compatibility-python-${{ matrix.python-version }}
           path: build/crewai/
@@ -205,7 +205,7 @@ jobs:
           build/wheel-audit/bin/python tools/audit_pydantic_ai_wheel.py
           uv pip install --python build/wheel-audit/bin/python "google-adk>=2.7,<3"
           build/wheel-audit/bin/python tools/audit_google_adk_wheel.py
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: distributions
           path: dist/
